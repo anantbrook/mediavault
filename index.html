@@ -678,6 +678,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <script>
 // ── STATE ──────────────────────────────────────────────────────
 const S = { dlCount:0, totalBytes:0, currentDlId:null, quality:'max', randUrl:null, lastRand:null };
+// Slideshow + random state — declared at top so all functions can access them
+let slideshowActive = false;
+let slideshowTimer  = null;
+let slideshowSecs   = 15;
+let randUrl         = null;
+let randMode        = 'art';
 let nTimer;
 
 // ── NAVIGATION ────────────────────────────────────────────────
@@ -863,14 +869,9 @@ function setQ(el, q) {
 }
 
 // ── RANDOM (LIVE DEVIANTART SCRAPING) ─────────────────────────
-let randUrl       = null;
 let randPageUrl   = null;
-let randMode      = 'art';
 let matureEnabled = false;
-let ageVerified   = false;
-let slideshowTimer = null;
-let slideshowSecs  = 15;   // default interval
-let slideshowActive = false;
+let ageVerified   = false;   // default interval
 
 function toggleMature() {
   if (!matureEnabled) {
