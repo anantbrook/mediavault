@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MEDIA VAULT — Universal Downloader</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07090e;--surface:#0d1117;--surface2:#131921;--border:#1a2535;
+  --accent:#00f5c4;--accent2:#ff3e6c;--accent3:#7c5cfc;--accent4:#ffb800;
+  --text:#e8edf5;--text2:#7a8fa6;--text3:#2e4060;
+  --glow:0 0 24px rgba(0,245,196,.25);--glow2:0 0 24px rgba(255,62,108,.25);--glow3:0 0 24px rgba(124,92,252,.25);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,245,196,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,196,.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;position:relative;z-index:1;}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sidebar::-webkit-scrollbar{width:2px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--accent3);}
+.logo{padding:24px 20px 18px;border-bottom:1px solid var(--border);}
+.logo-mark{font-family:'Bebas Neue',cursive;font-size:26px;letter-spacing:5px;background:linear-gradient(135deg,var(--accent),var(--accent3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.logo-sub{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:3px;margin-top:3px;display:flex;align-items:center;gap:6px;}
+.dot{width:5px;height:5px;background:var(--accent);border-radius:50%;box-shadow:var(--glow);animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.nav-grp{padding:16px 12px 4px;font-size:9px;font-family:'Space Mono',monospace;letter-spacing:2px;color:var(--text3);}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 4px;border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--text2);transition:all .2s;border:none;background:none;width:calc(100% - 8px);text-align:left;}
+.nav-btn:hover{background:rgba(0,245,196,.06);color:var(--text);}
+.nav-btn.active{background:rgba(0,245,196,.08);color:var(--accent);border-left:2px solid var(--accent);}
+.nav-btn .ni{font-size:16px;width:20px;text-align:center;}
+.nav-badge{margin-left:auto;background:var(--accent3);color:#fff;font-size:8px;padding:2px 5px;border-radius:4px;font-family:'Space Mono',monospace;}
+.site-list{padding:8px 12px 12px;}
+.site-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;margin:2px;border:1px solid var(--border);border-radius:5px;font-size:10px;font-family:'Space Mono',monospace;cursor:pointer;color:var(--text3);transition:all .2s;}
+.site-chip:hover,.site-chip.on{border-color:var(--accent);color:var(--accent);background:rgba(0,245,196,.05);}
+.sidebar-foot{margin-top:auto;padding:14px 16px;border-top:1px solid var(--border);font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);}
+
+/* ── MAIN ── */
+.main{display:flex;flex-direction:column;min-height:100vh;}
+
+/* ── TOPBAR ── */
+.topbar{padding:14px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;background:rgba(7,9,14,.85);backdrop-filter:blur(16px);position:sticky;top:0;z-index:100;}
+.tb-title{font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:3px;color:var(--text2);}
+.tb-title span{color:var(--accent);}
+.stats{margin-left:auto;display:flex;gap:20px;}
+.stat{text-align:center;font-family:'Space Mono',monospace;}
+.stat-val{font-size:16px;font-weight:700;color:var(--accent);}
+.stat-lbl{font-size:8px;color:var(--text3);letter-spacing:1px;}
+.tb-btns{display:flex;gap:8px;}
+
+/* ── CONTENT ── */
+.content{padding:24px 28px;flex:1;}
+
+/* ── PANELS ── */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;position:relative;overflow:hidden;}
+.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.panel-teal::before{background:linear-gradient(90deg,var(--accent),transparent);}
+.panel-red::before{background:linear-gradient(90deg,var(--accent2),transparent);}
+.panel-purple::before{background:linear-gradient(90deg,var(--accent3),transparent);}
+.panel-gold::before{background:linear-gradient(90deg,var(--accent4),transparent);}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
+.pt{font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:2px;display:flex;align-items:center;gap:8px;}
+.ps{font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;margin-top:3px;}
+
+/* ── INPUTS ── */
+.inp{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:13px 16px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;outline:none;transition:all .25s;width:100%;}
+.inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,245,196,.08);}
+.inp::placeholder{color:var(--text3);}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+
+/* ── BUTTONS ── */
+.btn{padding:12px 20px;border:none;border-radius:9px;cursor:pointer;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.5px;transition:all .2s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;}
+.btn:active{transform:scale(.97);}
+.btn-teal{background:linear-gradient(135deg,var(--accent),#00cca6);color:#000;}
+.btn-teal:hover{box-shadow:var(--glow);transform:translateY(-1px);}
+.btn-red{background:linear-gradient(135deg,var(--accent2),#c42950);color:#fff;}
+.btn-red:hover{box-shadow:var(--glow2);transform:translateY(-1px);}
+.btn-purple{background:linear-gradient(135deg,var(--accent3),#5539d4);color:#fff;}
+.btn-purple:hover{box-shadow:var(--glow3);transform:translateY(-1px);}
+.btn-gold{background:linear-gradient(135deg,var(--accent4),#d49000);color:#000;}
+.btn-gold:hover{transform:translateY(-1px);}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn-sm{padding:8px 14px;font-size:10px;}
+.btn-icon{width:34px;height:34px;padding:0;justify-content:center;font-size:14px;}
+
+/* ── SELECTS ── */
+.sel-wrap{position:relative;}
+.sel-wrap select{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 30px 10px 12px;color:var(--text);font-family:'Space Mono',monospace;font-size:11px;outline:none;appearance:none;cursor:pointer;transition:border-color .2s;}
+.sel-wrap select:focus{border-color:var(--accent);}
+.sel-wrap::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none;font-size:10px;}
+
+/* ── TOGGLE ── */
+.tog-wrap{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;color:var(--text2);transition:all .2s;user-select:none;}
+.tog-wrap:hover{border-color:var(--accent3);}
+.tog{width:34px;height:18px;background:var(--border);border-radius:20px;position:relative;transition:all .3s;flex-shrink:0;}
+.tog.on{background:var(--accent3);}
+.tog::after{content:'';position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:2px;left:2px;transition:all .3s;box-shadow:0 1px 3px rgba(0,0,0,.4);}
+.tog.on::after{left:18px;}
+
+/* ── TAGS ── */
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:9px;font-family:'Space Mono',monospace;letter-spacing:.5px;}
+.tag-teal{background:rgba(0,245,196,.1);color:var(--accent);border:1px solid rgba(0,245,196,.2);}
+.tag-red{background:rgba(255,62,108,.1);color:var(--accent2);border:1px solid rgba(255,62,108,.2);}
+.tag-purple{background:rgba(124,92,252,.1);color:var(--accent3);border:1px solid rgba(124,92,252,.2);}
+.tag-gold{background:rgba(255,184,0,.1);color:var(--accent4);border:1px solid rgba(255,184,0,.2);}
+.tag-gray{background:rgba(122,143,166,.1);color:var(--text2);border:1px solid var(--border);}
+
+/* ── PROGRESS ── */
+.pbar{width:100%;height:5px;background:var(--border);border-radius:5px;overflow:hidden;margin:10px 0;}
+.pfill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accent3),var(--accent));transition:width .4s ease;position:relative;overflow:hidden;}
+.pfill::after{content:'';position:absolute;top:0;right:0;bottom:0;width:60px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4));animation:shine .8s infinite;}
+@keyframes shine{0%{opacity:0;}50%{opacity:1;}100%{opacity:0;}}
+
+/* ── GRID ── */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+
+/* ── PREVIEW ── */
+.preview-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;min-height:180px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+.preview-box img,.preview-box video{max-width:100%;max-height:280px;object-fit:contain;border-radius:8px;}
+.prev-ph{text-align:center;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;padding:30px;}
+.prev-ph .ico{font-size:44px;display:block;margin-bottom:10px;opacity:.35;}
+
+/* ── META ── */
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.meta-cell{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;}
+.mc-lbl{font-size:8px;font-family:'Space Mono',monospace;color:var(--text3);letter-spacing:1px;margin-bottom:3px;}
+.mc-val{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ── QUALITY CHIPS ── */
+.qchips{display:flex;gap:7px;flex-wrap:wrap;}
+.qchip{padding:7px 14px;border:1px solid var(--border);border-radius:6px;font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;position:relative;}
+.qchip:hover{border-color:var(--accent3);}
+.qchip.sel{background:rgba(124,92,252,.12);border-color:var(--accent3);color:var(--accent3);}
+.qchip .qbadge{position:absolute;top:-7px;right:-7px;background:var(--accent2);color:#fff;font-size:7px;padding:1px 4px;border-radius:3px;letter-spacing:.5px;}
+
+/* ── DOWNLOAD ITEM ── */
+.dl-item{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg);border:1px solid var(--border);border-radius:9px;transition:all .2s;}
+.dl-item:hover{border-color:rgba(0,245,196,.15);}
+.dl-thumb{width:52px;height:40px;background:var(--surface2);border-radius:6px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;}
+.dl-thumb img{width:100%;height:100%;object-fit:cover;}
+.dl-info{flex:1;min-width:0;}
+.dl-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dl-meta{font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-top:2px;}
+.dl-actions{display:flex;gap:6px;}
+
+/* ── NOTIFICATION ── */
+#notif{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:12px 18px;font-family:'Space Mono',monospace;font-size:11px;z-index:9999;transform:translateY(60px);opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;gap:10px;max-width:320px;box-shadow:var(--glow);}
+#notif.show{transform:translateY(0);opacity:1;}
+
+/* ── MODAL ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(10px);}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px;width:460px;max-width:92vw;animation:popIn .3s cubic-bezier(.34,1.56,.64,1);}
+@keyframes popIn{from{transform:scale(.8);opacity:0;}to{transform:scale(1);opacity:1;}}
+.modal h2{font-family:'Bebas Neue',cursive;font-size:26px;letter-spacing:3px;margin-bottom:16px;}
+.modal-close{position:absolute;top:14px;right:14px;background:var(--bg);border:1px solid var(--border);border-radius:7px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:14px;transition:all .2s;}
+.modal-close:hover{border-color:var(--accent2);color:var(--accent2);}
+
+/* ── SHARE ── */
+.share-plat{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;}
+.spl-btn{padding:12px 6px;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all .2s;font-size:20px;}
+.spl-btn:hover{transform:scale(1.06);border-color:var(--accent3);}
+.spl-btn span{display:block;font-size:9px;margin-top:3px;color:var(--text3);font-family:'Space Mono',monospace;}
+
+/* ── RANDOM ── */
+.rand-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px;}
+.rand-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;cursor:pointer;transition:all .3s;text-align:center;}
+.rand-card:hover{border-color:var(--accent3);transform:translateY(-3px);box-shadow:0 8px 28px rgba(124,92,252,.12);}
+.rand-card .rc-ico{font-size:38px;display:block;margin-bottom:10px;}
+.rand-card h3{font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:2px;margin-bottom:5px;}
+.rand-card p{font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;line-height:1.5;}
+
+/* ── FILE LIST ── */
+.file-list{display:flex;flex-direction:column;gap:7px;max-height:360px;overflow-y:auto;}
+.file-list::-webkit-scrollbar{width:3px;}
+.file-list::-webkit-scrollbar-thumb{background:var(--accent3);}
+.file-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;}
+.fi-ext{width:36px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:10px;font-family:'Space Mono',monospace;font-weight:700;flex-shrink:0;}
+.fi-mp4{background:rgba(255,62,108,.15);color:var(--accent2);}
+.fi-mp3{background:rgba(124,92,252,.15);color:var(--accent3);}
+.fi-img{background:rgba(0,245,196,.15);color:var(--accent);}
+.fi-name{flex:1;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fi-size{font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);}
+
+/* ── SPINNER ── */
+.spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:rotate .7s linear infinite;display:none;}
+@keyframes rotate{to{transform:rotate(360deg);}}
+
+/* ── SECTIONS ── */
+.sec{display:none;flex-direction:column;gap:18px;}
+.sec.active{display:flex;}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* ── STATUS BADGE ── */
+.status-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:'Space Mono',monospace;font-size:11px;margin-bottom:4px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-mark">MEDIA VAULT</div>
+    <div class="logo-sub"><span class="dot"></span> UNIVERSAL DOWNLOADER</div>
+  </div>
+
+  <div class="nav-grp">MAIN</div>
+  <button class="nav-btn active" onclick="nav('download',this)"><span class="ni">⬇️</span>Download</button>
+  <button class="nav-btn" onclick="nav('random',this)"><span class="ni">🎲</span>Random Pick<span class="nav-badge">HOT</span></button>
+  <button class="nav-btn" onclick="nav('batch',this)"><span class="ni">📦</span>Batch Download</button>
+  <button class="nav-btn" onclick="nav('files',this)"><span class="ni">📁</span>My Files</button>
+  <button class="nav-btn" onclick="nav('history',this)"><span class="ni">🕓</span>History</button>
+  <button class="nav-btn" onclick="nav('auto',this)" id="autoNavBtn"><span class="ni">🤖</span>Auto 24/7<span class="nav-badge" id="autoNavBadge" style="background:#ff3e6c;display:none;">ON</span></button>
+
+  <div class="nav-grp">PLATFORMS</div>
+  <div class="site-list" id="siteChips">
+    {% for site in sites %}
+    <span class="site-chip" onclick="setSiteUrl(this,'{{site.url}}')">{{site.icon}} {{site.name}}</span>
+    {% endfor %}
+  </div>
+
+  <div class="sidebar-foot">
+    <div>MEDIA VAULT v2.0</div>
+    <div style="margin-top:4px;color:var(--text3)">Powered by yt-dlp</div>
+    <div style="margin-top:4px;">
+      <span id="ytdlp-ver" style="color:var(--accent)">yt-dlp ready ✓</span>
+    </div>
+  </div>
+</aside>
+
+<!-- ── MAIN ── -->
+<main class="main">
+  <div class="topbar">
+    <div class="tb-title">MEDIA <span>VAULT</span></div>
+    <span class="tag tag-teal">🟢 LIVE</span>
+    <div class="stats">
+      <div class="stat"><div class="stat-val" id="cDl">0</div><div class="stat-lbl">DOWNLOADED</div></div>
+      <div class="stat"><div class="stat-val" id="cSize">0 MB</div><div class="stat-lbl">SAVED</div></div>
+    </div>
+    <div class="tb-btns">
+      <button class="btn btn-ghost btn-sm" onclick="openFolder()">📂 Open Folder</button>
+      <button class="btn btn-ghost btn-sm" onclick="openShare(null)">🔗 Share</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══ DOWNLOAD ══ -->
+    <div class="sec active" id="sec-download">
+      <div class="panel panel-teal">
+        <div class="ph">
+          <div>
+            <div class="pt">⬇️ PASTE URL TO DOWNLOAD</div>
+            <div class="ps">Supports 1000+ websites · Max quality · No watermark</div>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:12px;">
+          <input class="inp" id="urlInput" placeholder="https://www.deviantart.com/...  or YouTube, Twitter, Reddit, Instagram, TikTok, Vimeo…" style="flex:1;" />
+          <button class="btn btn-teal" onclick="analyze()">🔍 ANALYZE</button>
+          <button class="btn btn-ghost" onclick="clearAll()">✕</button>
+        </div>
+        <div class="row">
+          <div class="sel-wrap">
+            <select id="qualSel">
+              <option value="max">🏆 Max Quality</option>
+              <option value="4k">4K UHD</option>
+              <option value="1080">1080p HD</option>
+              <option value="720">720p</option>
+              <option value="audio">🎵 Audio Only (MP3)</option>
+              <option value="original">Original RAW</option>
+            </select>
+          </div>
+          <div class="sel-wrap">
+            <select id="fmtSel">
+              <option value="mp4">Format: MP4</option>
+              <option value="webm">WebM</option>
+              <option value="mkv">MKV</option>
+            </select>
+          </div>
+          <div class="tog-wrap" onclick="toggle('togWM')">
+            <div class="tog on" id="togWM"></div>
+            <span>No Watermark</span>
+          </div>
+          <div class="tog-wrap" onclick="toggle('togAudio')">
+            <div class="tog" id="togAudio"></div>
+            <span>Audio Only</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESULT -->
+      <div class="grid2" id="resultArea" style="display:none;">
+        <!-- LEFT: PREVIEW -->
+        <div class="panel panel-teal">
+          <div class="ph">
+            <div><div class="pt">🖼 PREVIEW</div><div class="ps" id="prevSub">—</div></div>
+            <span class="tag tag-teal" id="typeTag">MEDIA</span>
+          </div>
+          <div class="preview-box" id="prevBox">
+            <div class="prev-ph"><span class="ico">🔮</span>Preview loading…</div>
+          </div>
+          <div id="dlProgressWrap" style="display:none;margin-top:12px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;font-family:'Space Mono',monospace;margin-bottom:4px;">
+              <span id="dlStatus">Starting…</span>
+              <span id="dlPct">0%</span>
+            </div>
+            <div class="pbar"><div class="pfill" id="dlFill" style="width:0%"></div></div>
+            <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;" id="dlSpeed"></div>
+          </div>
+          <div class="row" style="margin-top:14px;flex-wrap:wrap;">
+            <button class="btn btn-teal" id="dlBtn" onclick="download()">⬇️ DOWNLOAD</button>
+            <button class="btn btn-purple" onclick="openShare(document.getElementById('urlInput').value)">🔗 SHARE</button>
+            <button class="btn btn-ghost" onclick="copyUrl()">📋 COPY URL</button>
+            <button class="btn btn-ghost btn-sm" id="dlFileBtn" style="display:none;" onclick="downloadFile()">💾 SAVE FILE</button>
+          </div>
+        </div>
+
+        <!-- RIGHT: INFO -->
+        <div class="panel panel-teal">
+          <div class="ph"><div><div class="pt">📊 MEDIA INFO</div><div class="ps">Detected metadata</div></div></div>
+          <div class="meta-grid">
+            <div class="meta-cell"><div class="mc-lbl">SITE</div><div class="mc-val" id="mSite">—</div></div>
+            <div class="meta-cell"><div class="mc-lbl">TYPE</div><div class="mc-val" id="mType">—</div></div>
+            <div class="meta-cell"><div class="mc-lbl">RESOLUTION</div><div class="mc-val" id="mRes">—</div></div>
+            <div class="meta-cell"><div class="mc-lbl">DURATION</div><div class="mc-val" id="mDur">—</div></div>
+            <div class="meta-cell"><div class="mc-lbl">UPLOADER</div><div class="mc-val" id="mUp">—</div></div>
+            <div class="meta-cell"><div class="mc-lbl">VIEWS</div><div class="mc-val" id="mViews">—</div></div>
+          </div>
+          <div style="margin-bottom:14px;">
+            <div class="pt" style="font-size:14px;margin-bottom:10px;">⚙️ QUALITY</div>
+            <div class="qchips">
+              <div class="qchip sel" onclick="setQ(this,'max')">MAX<div class="qbadge">BEST</div></div>
+              <div class="qchip" onclick="setQ(this,'4k')">4K</div>
+              <div class="qchip" onclick="setQ(this,'1080')">1080p</div>
+              <div class="qchip" onclick="setQ(this,'720')">720p</div>
+              <div class="qchip" onclick="setQ(this,'audio')">MP3</div>
+            </div>
+          </div>
+          <div>
+            <div class="pt" style="font-size:14px;margin-bottom:8px;">📝 FILENAME</div>
+            <input class="inp" id="fnInput" placeholder="Custom filename (optional)" style="font-size:11px;" />
+          </div>
+        </div>
+      </div>
+
+      <!-- LOADING STATE -->
+      <div id="loadingArea" style="display:none;">
+        <div class="panel" style="text-align:center;padding:40px;">
+          <div class="spin" id="mainSpin" style="display:block;margin:0 auto 16px;"></div>
+          <div style="font-family:'Space Mono',monospace;font-size:13px;color:var(--accent);" id="loadMsg">Analyzing URL…</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px;">Fetching metadata via yt-dlp</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ RANDOM ══ -->
+    <div class="sec" id="sec-random">
+
+      <!-- 18+ AGE GATE MODAL -->
+      <div id="ageGateOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:2000;align-items:center;justify-content:center;backdrop-filter:blur(16px);">
+        <div style="background:var(--surface);border:1px solid var(--accent2);border-radius:20px;padding:40px;max-width:400px;width:90%;text-align:center;">
+          <div style="font-size:60px;margin-bottom:16px;">🔞</div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:32px;letter-spacing:4px;color:var(--accent2);margin-bottom:10px;">AGE VERIFICATION</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.6;">This section contains adult / mature content from DeviantArt.<br>You must be <strong>18 years or older</strong> to continue.</div>
+          <div style="display:flex;gap:12px;justify-content:center;">
+            <button class="btn btn-red" onclick="confirmAge(true)" style="font-size:13px;padding:14px 28px;">✅ I AM 18+</button>
+            <button class="btn btn-ghost" onclick="confirmAge(false)" style="font-size:13px;padding:14px 28px;">✕ Go Back</button>
+          </div>
+          <div style="margin-top:16px;font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;">By clicking "I AM 18+" you confirm you are of legal age in your region.</div>
+        </div>
+      </div>
+
+      <div class="panel panel-purple" style="background:linear-gradient(135deg,rgba(124,92,252,.06),rgba(0,245,196,.04));">
+        <div class="ph">
+          <div>
+            <div class="pt" style="font-size:26px;font-family:'Bebas Neue';letter-spacing:4px;">🎲 RANDOM DISCOVERY</div>
+            <div class="ps">Live scraping from DeviantArt · Real images & videos fetched fresh</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="tog-wrap" id="matureToggleWrap" onclick="toggleMature()" style="border-color:var(--accent2);">
+              <div class="tog" id="matureTog"></div>
+              <span style="color:var(--accent2);font-size:11px;">🔞 18+ Mode</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="rand-grid">
+          <div class="rand-card" onclick="fetchRandom('art')">
+            <span class="rc-ico">🎨</span>
+            <h3>RANDOM ART</h3>
+            <p>Live fetch from DeviantArt — digital art, illustrations, concept art</p>
+            <div style="margin-top:10px;" class="tag tag-teal">LIVE · DEVIANTART</div>
+          </div>
+          <div class="rand-card" onclick="fetchRandom('video')">
+            <span class="rc-ico">🎬</span>
+            <h3>RANDOM VIDEO</h3>
+            <p>Animations, MMD, 3D renders, motion graphics — real videos from DA</p>
+            <div style="margin-top:10px;" class="tag tag-red">LIVE · ANIMATION · MMD</div>
+          </div>
+          <div class="rand-card" onclick="fetchRandom('wallpaper')">
+            <span class="rc-ico">🖼</span>
+            <h3>RANDOM WALLPAPER</h3>
+            <p>HD wallpapers scraped live — space, fantasy, dark, minimal, 4K</p>
+            <div style="margin-top:10px;" class="tag tag-gold">LIVE · 4K · ULTRA HD</div>
+          </div>
+          <div class="rand-card" onclick="clickMature()" id="matureCard" style="border-color:rgba(255,62,108,.2);">
+            <span class="rc-ico">🔞</span>
+            <h3>MATURE CONTENT</h3>
+            <p>Adult / mature art from DeviantArt. Age verification required.</p>
+            <div style="margin-top:10px;" class="tag tag-red">18+ ONLY · AGE GATE</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESULT PANEL -->
+      <div class="panel panel-purple" id="randResultPanel" style="display:none;">
+        <div class="ph">
+          <div><div class="pt">🎲 RANDOM PICK</div><div class="ps" id="randSrc">Fetching from DeviantArt…</div></div>
+          <span class="tag tag-purple" id="randTag">LOADING</span>
+        </div>
+        <!-- Loading state -->
+        <div id="randLoadState" style="text-align:center;padding:40px;">
+          <div class="spin" style="display:block;margin:0 auto 16px;"></div>
+          <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--accent);" id="randLoadMsg">Scraping DeviantArt…</div>
+        </div>
+        <!-- Result state -->
+        <div id="randContentState" style="display:none;">
+          <div class="grid2">
+            <div>
+              <div class="preview-box" id="randPrev" style="min-height:220px;"></div>
+              <div class="row" style="margin-top:12px;flex-wrap:wrap;">
+                <button class="btn btn-teal" id="randDlBtn" onclick="dlRandom()">⬇️ DOWNLOAD THIS</button>
+                <button class="btn btn-ghost" onclick="openInDA()">🔗 Open on DA</button>
+                <button class="btn btn-ghost" onclick="rollAgain()">🎲 ROLL AGAIN</button>
+                <button class="btn btn-ghost" id="slideshowBtn" onclick="toggleSlideshow()" title="Auto-advance to next random pick">
+                  ▶ SLIDESHOW
+                </button>
+                <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);font-family:'Space Mono',monospace;">
+                  <span>⏱</span>
+                  <select id="slideshowSpeed" onchange="slideshowSecs=+this.value" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;">
+                    <option value="10">10s</option>
+                    <option value="15" selected>15s</option>
+                    <option value="20">20s</option>
+                    <option value="30">30s</option>
+                    <option value="45">45s</option>
+                    <option value="60">60s</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="meta-grid">
+                <div class="meta-cell"><div class="mc-lbl">TITLE</div><div class="mc-val" id="rTitle">—</div></div>
+                <div class="meta-cell"><div class="mc-lbl">AUTHOR</div><div class="mc-val" id="rAuthor">—</div></div>
+                <div class="meta-cell"><div class="mc-lbl">SOURCE</div><div class="mc-val" id="rSite">—</div></div>
+                <div class="meta-cell"><div class="mc-lbl">TYPE</div><div class="mc-val" id="rType">—</div></div>
+                <div class="meta-cell"><div class="mc-lbl">TAG</div><div class="mc-val" id="rTag">—</div></div>
+                <div class="meta-cell"><div class="mc-lbl">STATUS</div><div class="mc-val" id="rStatus">Ready</div></div>
+              </div>
+              <div style="margin-top:12px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:11px;font-family:'Space Mono',monospace;color:var(--text3);">
+                ℹ️ Random picks are fetched live from DeviantArt.<br>Videos download via yt-dlp. Images download directly.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ BATCH ══ -->
+    <div class="sec" id="sec-batch">
+      <div class="panel panel-gold">
+        <div class="ph">
+          <div><div class="pt">📦 BATCH DOWNLOADER</div><div class="ps">Paste multiple URLs — one per line</div></div>
+          <button class="btn btn-teal" onclick="runBatch()">▶ RUN ALL</button>
+        </div>
+        <textarea id="batchIn" class="inp" placeholder="https://www.deviantart.com/...&#10;https://www.youtube.com/watch?v=...&#10;https://twitter.com/user/status/...&#10;https://www.reddit.com/r/..." style="min-height:140px;resize:vertical;line-height:1.8;"></textarea>
+        <div class="row" style="margin-top:12px;">
+          <div class="sel-wrap"><select id="batchQual"><option value="max">Max Quality</option><option value="1080">1080p</option><option value="audio">Audio Only</option></select></div>
+          <div class="tog-wrap" onclick="toggle('batchWM')"><div class="tog on" id="batchWM"></div><span>No Watermark</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="pt" style="font-size:16px;margin-bottom:14px;">📋 QUEUE</div>
+        <div class="pbar"><div class="pfill" id="batchFill" style="width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;font-family:'Space Mono',monospace;margin-bottom:12px;">
+          <span id="batchStat">Idle</span><span id="batchCnt">0/0</span>
+        </div>
+        <div class="file-list" id="batchQueue">
+          <div style="text-align:center;padding:30px;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;">Queue empty · Paste URLs above</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ FILES ══ -->
+    <div class="sec" id="sec-files">
+      <div class="panel panel-teal">
+        <div class="ph">
+          <div><div class="pt">📁 MY DOWNLOADS</div><div class="ps" id="fileCount">Loading…</div></div>
+          <div class="row">
+            <button class="btn btn-ghost btn-sm" onclick="loadFiles()">🔄 Refresh</button>
+            <button class="btn btn-ghost btn-sm" onclick="openFolder()">📂 Open Folder</button>
+          </div>
+        </div>
+        <div class="file-list" id="filesList">
+          <div class="prev-ph" style="padding:40px;"><span class="ico">📂</span>Loading files…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ HISTORY ══ -->
+    <div class="sec" id="sec-history">
+      <div class="panel panel-teal">
+        <div class="ph">
+          <div><div class="pt">🕓 HISTORY</div><div class="ps" id="histCount">0 downloads</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="clearHist()">🗑 Clear</button>
+        </div>
+        <div class="file-list" id="histList">
+          <div style="text-align:center;padding:40px;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;"><div style="font-size:36px;margin-bottom:10px;">📂</div>No downloads yet</div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ══ AUTO 24/7 ══ -->
+    <div class="sec" id="sec-auto">
+
+      <!-- HEADER PANEL -->
+      <div class="panel" style="background:linear-gradient(135deg,rgba(255,62,108,.08),rgba(124,92,252,.06));border-color:rgba(255,62,108,.3);">
+        <div class="ph">
+          <div>
+            <div class="pt" style="font-size:26px;font-family:'Bebas Neue';letter-spacing:4px;">🤖 AUTO DOWNLOADER — 24/7</div>
+            <div class="ps">Continuously downloads anime, wallpapers, mature art, 18+ videos at max quality — forever</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button class="btn" id="autoStartBtn" onclick="autoStart()"
+              style="background:linear-gradient(135deg,#00f5c4,#7c5cfc);color:#0a0a12;font-weight:700;min-width:120px;">
+              ▶ START 24/7
+            </button>
+            <button class="btn btn-ghost" id="autoPauseBtn" onclick="autoPause()" style="display:none;">⏸ PAUSE</button>
+            <button class="btn btn-ghost" id="autoStopBtn"  onclick="autoStop()"  style="display:none;">⏹ STOP</button>
+          </div>
+        </div>
+
+        <!-- STATUS BAR -->
+        <div id="autoStatusBar" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;padding:12px 16px;
+          background:var(--bg);border-radius:10px;font-family:'Space Mono',monospace;font-size:11px;">
+          <span>STATUS: <span id="autoStatusTxt" style="color:var(--text3);">Idle</span></span>
+          <span>DOWNLOADED: <span id="autoTotalTxt" style="color:var(--accent);">0</span></span>
+          <span>DISK: <span id="autoDiskTxt" style="color:var(--accent2);">0 MB</span></span>
+          <span>DELAY: <select id="autoDelaySelect" onchange="autoSetDelay(+this.value)"
+            style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-size:10px;">
+            <option value="3">3s</option><option value="5">5s</option><option value="8" selected>8s</option>
+            <option value="15">15s</option><option value="30">30s</option><option value="60">60s</option>
+          </select></span>
+        </div>
+
+        <!-- CURRENT DOWNLOAD -->
+        <div id="autoCurrentWrap" style="display:none;margin-top:10px;padding:10px 14px;
+          background:rgba(0,245,196,.05);border:1px solid rgba(0,245,196,.15);border-radius:8px;">
+          <div style="font-size:10px;font-family:'Space Mono',monospace;color:var(--accent);margin-bottom:4px;">⬇ NOW DOWNLOADING</div>
+          <div id="autoCurrentTxt" style="font-size:13px;color:var(--text);"></div>
+        </div>
+      </div>
+
+      <!-- GENRE TOGGLES -->
+      <div class="panel">
+        <div class="pt" style="font-size:15px;margin-bottom:14px;">🎛 GENRE SELECTOR — toggle what gets downloaded</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;" id="genreGrid">
+          <!-- filled by JS -->
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn btn-ghost btn-sm" onclick="autoSelectAll()">✅ All On</button>
+          <button class="btn btn-ghost btn-sm" onclick="autoSelectNone()">⬜ All Off</button>
+        </div>
+      </div>
+
+
+      <!-- TELEGRAM PERMANENT STORAGE PANEL -->
+      <div class="panel" style="border-color:rgba(0,136,204,.3);background:linear-gradient(135deg,rgba(0,136,204,.05),rgba(0,0,0,0));">
+        <div class="ph">
+          <div>
+            <div class="pt" style="font-size:15px;">📲 PERMANENT STORAGE — Telegram</div>
+            <div class="ps">Every download is instantly sent to your Telegram channel — survives server restarts forever</div>
+          </div>
+          <span id="tgStatusBadge" style="font-family:'Space Mono',monospace;font-size:10px;padding:4px 10px;
+            border-radius:6px;background:var(--bg);border:1px solid var(--border);color:var(--text3);">
+            NOT SET
+          </span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;" id="tgSetupPanel">
+          <div>
+            <div style="font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);margin-bottom:6px;">
+              ① Go to @BotFather on Telegram → /newbot → copy token
+            </div>
+            <div style="font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);margin-bottom:6px;">
+              ② Create a channel → add your bot as Admin
+            </div>
+            <div style="font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);margin-bottom:6px;">
+              ③ Get chat ID from @userinfobot
+            </div>
+            <div style="font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);">
+              ④ Add both to Railway → Variables tab
+            </div>
+          </div>
+          <div style="background:var(--bg);border-radius:8px;padding:12px;font-family:'Space Mono',monospace;font-size:11px;">
+            <div style="color:var(--accent);margin-bottom:8px;">Railway Environment Variables:</div>
+            <div style="color:var(--text2);margin-bottom:4px;">TELEGRAM_BOT_TOKEN</div>
+            <div style="color:var(--text3);font-size:10px;margin-bottom:10px;">= 123456:ABCdef...</div>
+            <div style="color:var(--text2);margin-bottom:4px;">TELEGRAM_CHAT_ID</div>
+            <div style="color:var(--text3);font-size:10px;">= -1001234567890</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="tgTest()">🔔 Send Test Message</button>
+          <button class="btn btn-ghost btn-sm" onclick="tgRefresh()">🔄 Check Status</button>
+          <span id="tgQueueTxt" style="font-size:11px;font-family:'Space Mono',monospace;color:var(--text3);"></span>
+        </div>
+      </div>
+
+      <!-- DOWNLOAD LOG -->
+      <div class="panel">
+        <div class="ph">
+          <div class="pt" style="font-size:15px;">📋 DOWNLOAD LOG</div>
+          <button class="btn btn-ghost btn-sm" onclick="autoClearLog()">🗑 Clear</button>
+        </div>
+        <div class="file-list" id="autoLog" style="max-height:400px;overflow-y:auto;">
+          <div style="text-align:center;padding:30px;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;">
+            Start the auto-downloader to see activity here
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /sec-auto -->
+  </div><!-- /content -->
+</main>
+</div>
+
+<!-- ── SHARE MODAL ── -->
+<div class="overlay" id="shareOverlay">
+  <div class="modal" style="position:relative;">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h2>🔗 SHARE LINK</h2>
+    <div style="font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:12px;">Share this media anywhere</div>
+    <div class="row">
+      <input class="inp" id="shareInput" readonly style="flex:1;color:var(--accent);font-size:11px;"/>
+      <button class="btn btn-teal btn-sm" onclick="copyShare()">COPY</button>
+    </div>
+    <div class="share-plat">
+      <div class="spl-btn" onclick="share('whatsapp')">💬<span>WhatsApp</span></div>
+      <div class="spl-btn" onclick="share('telegram')">✈️<span>Telegram</span></div>
+      <div class="spl-btn" onclick="share('twitter')">🐦<span>Twitter</span></div>
+      <div class="spl-btn" onclick="share('reddit')">🔴<span>Reddit</span></div>
+      <div class="spl-btn" onclick="share('discord')">🎮<span>Discord</span></div>
+      <div class="spl-btn" onclick="share('facebook')">📘<span>Facebook</span></div>
+      <div class="spl-btn" onclick="share('email')">📧<span>Email</span></div>
+      <div class="spl-btn" onclick="nativeShare()">📤<span>More</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── NOTIFICATION ── -->
+<div id="notif"><span id="nIco">✅</span><span id="nMsg">Done!</span></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────
+const S = { dlCount:0, totalBytes:0, currentDlId:null, quality:'max', randUrl:null, lastRand:null };
+let nTimer;
+
+// ── NAVIGATION ────────────────────────────────────────────────
+function nav(id, btn) {
+  if (id !== 'random' && slideshowActive) stopSlideshow();
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(id==='files') loadFiles();
+  if(id==='history') loadHistory();
+}
+
+// ── NOTIFY ────────────────────────────────────────────────────
+function notify(msg, ico='✅', dur=3000) {
+  document.getElementById('nMsg').textContent = msg;
+  document.getElementById('nIco').textContent = ico;
+  const n = document.getElementById('notif');
+  n.classList.add('show');
+  clearTimeout(nTimer);
+  nTimer = setTimeout(() => n.classList.remove('show'), dur);
+}
+
+// ── TOGGLE ────────────────────────────────────────────────────
+function toggle(id) { document.getElementById(id).classList.toggle('on'); }
+
+// ── SITE URL ──────────────────────────────────────────────────
+function setSiteUrl(el, site) {
+  document.querySelectorAll('.site-chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  const placeholders = {
+    'deviantart.com': 'https://www.deviantart.com/username/art/title-123456',
+    'youtube.com': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    'twitter.com': 'https://twitter.com/user/status/123456789',
+    'reddit.com': 'https://www.reddit.com/r/wallpapers/comments/...',
+    'instagram.com': 'https://www.instagram.com/p/...',
+    'pinterest.com': 'https://www.pinterest.com/pin/...',
+    'flickr.com': 'https://www.flickr.com/photos/user/12345678/',
+    'vimeo.com': 'https://vimeo.com/123456789',
+    'tiktok.com': 'https://www.tiktok.com/@user/video/...',
+    'tumblr.com': 'https://username.tumblr.com/post/...',
+    'artstation.com': 'https://www.artstation.com/artwork/...',
+    'soundcloud.com': 'https://soundcloud.com/artist/track',
+    'facebook.com': 'https://www.facebook.com/watch?v=...',
+    'twitch.tv': 'https://www.twitch.tv/videos/...',
+  };
+  document.getElementById('urlInput').placeholder = placeholders[site] || 'Paste URL here…';
+}
+
+// ── ANALYZE ───────────────────────────────────────────────────
+async function analyze() {
+  const url = document.getElementById('urlInput').value.trim();
+  if(!url) { notify('Paste a URL first!', '⚠️'); return; }
+
+  document.getElementById('resultArea').style.display = 'none';
+  document.getElementById('loadingArea').style.display = 'block';
+  document.getElementById('mainSpin').style.display = 'block';
+  document.getElementById('loadMsg').textContent = 'Analyzing URL via yt-dlp…';
+  notify('Fetching media info…', '🔍', 10000);
+
+  try {
+    const res = await fetch('/api/info', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url})
+    });
+    const data = await res.json();
+    document.getElementById('loadingArea').style.display = 'none';
+
+    if(data.error) { notify('Error: ' + data.error, '❌', 5000); return; }
+
+    // Populate info
+    document.getElementById('mSite').textContent = data.extractor || '—';
+    document.getElementById('mType').textContent = data.type?.toUpperCase() || '—';
+    document.getElementById('mRes').textContent = data.width && data.height ? `${data.width}×${data.height}` : (data.formats?.[0]?.quality || '—');
+    document.getElementById('mDur').textContent = data.duration ? fmtDur(data.duration) : '—';
+    document.getElementById('mUp').textContent = data.uploader || '—';
+    document.getElementById('mViews').textContent = data.view_count ? fmtNum(data.view_count) : '—';
+    document.getElementById('prevSub').textContent = data.title || '—';
+    document.getElementById('fnInput').value = (data.title||'media').replace(/[^\w\- ]/g,'_').substring(0,60);
+    document.getElementById('typeTag').textContent = data.type?.toUpperCase() || 'MEDIA';
+    document.getElementById('typeTag').className = 'tag ' + (data.type==='video'?'tag-red':'tag-teal');
+
+    // Thumbnail
+    if(data.thumbnail) {
+      document.getElementById('prevBox').innerHTML = `<img src="${data.thumbnail}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'prev-ph\\'><span class=\\'ico\\'>🖼</span>Preview unavailable</div>'" />`;
+    }
+
+    document.getElementById('resultArea').style.display = 'grid';
+    notify(`Found: ${data.title || 'media'}`, '✅');
+  } catch(e) {
+    document.getElementById('loadingArea').style.display = 'none';
+    notify('Could not analyze URL. Try anyway — download may still work.', '⚠️', 4000);
+    document.getElementById('resultArea').style.display = 'grid';
+    document.getElementById('mSite').textContent = 'Unknown';
+  }
+}
+
+// ── DOWNLOAD ──────────────────────────────────────────────────
+async function download() {
+  const url = document.getElementById('urlInput').value.trim();
+  if(!url) { notify('Analyze a URL first!', '⚠️'); return; }
+
+  const quality = S.quality;
+  const fmt = document.getElementById('fmtSel').value;
+  const filename = document.getElementById('fnInput').value.trim();
+  const audioOnly = document.getElementById('togAudio').classList.contains('on');
+  const noWM = document.getElementById('togWM').classList.contains('on');
+
+  document.getElementById('dlProgressWrap').style.display = 'block';
+  document.getElementById('dlBtn').disabled = true;
+  document.getElementById('dlBtn').textContent = '⏳ Downloading…';
+  notify('Download started!', '⬇️', 60000);
+
+  const res = await fetch('/api/download', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({url, quality, format:fmt, filename, audio_only:audioOnly, no_watermark:noWM})
+  });
+  const {dl_id} = await res.json();
+  S.currentDlId = dl_id;
+  pollProgress(dl_id);
+}
+
+function pollProgress(dl_id) {
+  const iv = setInterval(async () => {
+    const res = await fetch(`/api/progress/${dl_id}`);
+    const d = await res.json();
+
+    document.getElementById('dlFill').style.width = d.progress + '%';
+    document.getElementById('dlPct').textContent = d.progress + '%';
+
+    if(d.status === 'downloading') {
+      document.getElementById('dlStatus').textContent = `Downloading… ${d.speed||''}`;
+      if(d.eta) document.getElementById('dlSpeed').textContent = `ETA: ${d.eta}s`;
+    } else if(d.status === 'processing') {
+      document.getElementById('dlStatus').textContent = 'Processing…';
+    } else if(d.status === 'done') {
+      clearInterval(iv);
+      document.getElementById('dlFill').style.width = '100%';
+      document.getElementById('dlStatus').textContent = '✅ Complete!';
+      document.getElementById('dlBtn').disabled = false;
+      document.getElementById('dlBtn').innerHTML = '⬇️ DOWNLOAD';
+      document.getElementById('dlFileBtn').style.display = 'inline-flex';
+      document.getElementById('dlFileBtn').setAttribute('data-id', dl_id);
+      S.dlCount++;
+      S.totalBytes += (d.filesize || 0);
+      updateStats();
+      notify(`✅ Saved: ${d.filename || 'file'}`, '💾', 5000);
+    } else if(d.status === 'error') {
+      clearInterval(iv);
+      document.getElementById('dlStatus').textContent = '❌ Error: ' + d.error;
+      document.getElementById('dlBtn').disabled = false;
+      document.getElementById('dlBtn').innerHTML = '⬇️ DOWNLOAD';
+      notify('Download failed: ' + d.error, '❌', 6000);
+    }
+  }, 600);
+}
+
+function downloadFile() {
+  const btn = document.getElementById('dlFileBtn');
+  const id = btn.getAttribute('data-id') || S.currentDlId;
+  if(id) window.open(`/api/file/${id}`, '_blank');
+}
+
+function clearAll() {
+  document.getElementById('urlInput').value = '';
+  document.getElementById('resultArea').style.display = 'none';
+  document.getElementById('loadingArea').style.display = 'none';
+}
+
+function copyUrl() {
+  navigator.clipboard.writeText(document.getElementById('urlInput').value);
+  notify('URL copied!', '📋');
+}
+
+// ── QUALITY ───────────────────────────────────────────────────
+function setQ(el, q) {
+  document.querySelectorAll('.qchip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  S.quality = q;
+  document.getElementById('qualSel').value = q;
+}
+
+// ── RANDOM (LIVE DEVIANTART SCRAPING) ─────────────────────────
+let randUrl       = null;
+let randPageUrl   = null;
+let randMode      = 'art';
+let matureEnabled = false;
+let ageVerified   = false;
+let slideshowTimer = null;
+let slideshowSecs  = 15;   // default interval
+let slideshowActive = false;
+
+function toggleMature() {
+  if (!matureEnabled) {
+    clickMature();
+  } else {
+    matureEnabled = false;
+    document.getElementById('matureTog').classList.remove('on');
+    notify('18+ mode disabled', 'ℹ️');
+  }
+}
+
+function clickMature() {
+  if (ageVerified) {
+    matureEnabled = true;
+    document.getElementById('matureTog').classList.add('on');
+    fetchRandom('mature');
+  } else {
+    document.getElementById('ageGateOverlay').style.display = 'flex';
+  }
+}
+
+function confirmAge(yes) {
+  document.getElementById('ageGateOverlay').style.display = 'none';
+  if (yes) {
+    ageVerified   = true;
+    matureEnabled = true;
+    document.getElementById('matureTog').classList.add('on');
+    notify('18+ mode enabled — mature content unlocked', '🔞');
+    fetchRandom('mature');
+  } else {
+    notify('Cancelled', 'ℹ️');
+  }
+}
+
+async function fetchRandom(mode) {
+  randMode = mode;
+  const mature = matureEnabled && ageVerified;
+
+  // Show result panel in loading state
+  const panel = document.getElementById('randResultPanel');
+  panel.style.display = 'block';
+  document.getElementById('randLoadState').style.display = 'block';
+  document.getElementById('randContentState').style.display = 'none';
+
+  const modeLabels = {art:'🎨 Random Art', video:'🎬 Random Video', wallpaper:'🖼 Random Wallpaper', mature:'🔞 Mature Content'};
+  const modeTags   = {art:'🎨 ART', video:'🎬 VIDEO', wallpaper:'🖼 WALLPAPER', mature:'🔞 MATURE'};
+  document.getElementById('randSrc').textContent = modeLabels[mode] || '🎲 Random';
+  document.getElementById('randTag').textContent  = modeTags[mode]  || 'RANDOM';
+
+  const msgs = ['Connecting to DeviantArt…','Scraping tag page…','Picking random item…','Loading preview…'];
+  let mi = 0;
+  const msgIv = setInterval(() => {
+    document.getElementById('randLoadMsg').textContent = msgs[mi++ % msgs.length];
+  }, 800);
+
+  try {
+    const res  = await fetch('/api/random', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({mode, mature})
+    });
+    const data = await res.json();
+    clearInterval(msgIv);
+
+    if (data.error) {
+      document.getElementById('randLoadMsg').textContent = '❌ ' + data.error;
+      notify('Could not fetch: ' + data.error, '❌', 5000);
+      return;
+    }
+
+    // Populate metadata
+    randUrl     = data.url;   // DA page URL
+    randPageUrl = data.url;
+    document.getElementById('rTitle').textContent  = data.title  || '—';
+    document.getElementById('rAuthor').textContent = data.author || '—';
+    document.getElementById('rSite').textContent   = data.source || 'DeviantArt';
+    document.getElementById('rType').textContent   = (data.is_video ? '🎬 VIDEO' : '🖼 IMAGE') + (mode==='mature'?' · MATURE':'');
+    document.getElementById('rTag').textContent    = '#' + (data.tag || mode);
+    document.getElementById('rStatus').textContent = 'Ready to download';
+
+    // Show preview
+    document.getElementById('randLoadState').style.display = 'none';
+    document.getElementById('randContentState').style.display = 'block';
+
+    const box = document.getElementById('randPrev');
+    if (data.is_video) {
+      box.innerHTML = `
+        <div class="prev-ph" style="padding:30px;">
+          <span class="ico">🎬</span>
+          <div style="color:var(--accent);font-size:13px;margin-bottom:6px;">${data.title}</div>
+          <div style="font-size:11px;color:var(--text3);">by ${data.author}</div>
+          <div style="margin-top:12px;" class="tag tag-red">VIDEO · DeviantArt</div>
+        </div>`;
+    } else if (data.thumbnail) {
+      const thumbSrc = data.thumbnail
+        ? (data.thumbnail.includes('wixmp') ? `/api/thumb?url=${encodeURIComponent(data.thumbnail)}` : data.thumbnail)
+        : null;
+      if (thumbSrc) {
+        box.innerHTML = `<img src="${thumbSrc}" style="max-width:100%;max-height:250px;border-radius:8px;object-fit:contain;"
+          onerror="this.parentElement.innerHTML='<div class=\\'prev-ph\\'><span class=\\'ico\\'>🖼</span>${data.title}</div>'" />`;
+      };
+    } else {
+      box.innerHTML = `<div class="prev-ph"><span class="ico">🖼</span>${data.title}<br><small style="color:var(--accent)">by ${data.author}</small></div>`;
+    }
+
+    notify(`Found: "${data.title}" by ${data.author}`, data.is_video ? '🎬' : '🎨');
+
+  } catch(e) {
+    clearInterval(msgIv);
+    document.getElementById('randLoadMsg').textContent = '❌ Network error — is the server running?';
+    notify('Error: ' + e.message, '❌', 5000);
+  }
+}
+
+function openInDA() {
+  if (randPageUrl) window.open(randPageUrl, '_blank');
+}
+
+async function dlRandom() {
+  if (!randUrl) { notify('Pick something first!', '⚠️'); return; }
+
+  const dlBtn = document.getElementById('randDlBtn');
+  dlBtn.disabled = true; dlBtn.textContent = '⏳ Downloading…';
+  document.getElementById('rStatus').textContent = 'Downloading…';
+  notify('Downloading from DeviantArt…', '⬇️', 30000);
+
+  try {
+    const res = await fetch('/api/download', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url: randUrl, quality: 'max', no_watermark: true,
+                             filename: 'da-random-' + Date.now()})
+    });
+    const {dl_id, error} = await res.json();
+    if (error) throw new Error(error);
+
+    const iv = setInterval(async () => {
+      const r = await fetch(`/api/progress/${dl_id}`);
+      const d = await r.json();
+      if (d.status === 'done') {
+        clearInterval(iv);
+        dlBtn.disabled = false; dlBtn.textContent = '⬇️ DOWNLOAD THIS';
+        document.getElementById('rStatus').textContent = '✅ Saved!';
+        S.dlCount++; S.totalBytes += (d.filesize||0); updateStats();
+        notify(`✅ Saved: ${d.filename}`, '💾', 5000);
+        window.open(`/api/file/${dl_id}`, '_blank');
+      } else if (d.status === 'error') {
+        clearInterval(iv);
+        dlBtn.disabled = false; dlBtn.textContent = '⬇️ DOWNLOAD THIS';
+        document.getElementById('rStatus').textContent = '❌ Failed';
+        notify('Failed: ' + d.error, '❌', 6000);
+      } else {
+        document.getElementById('rStatus').textContent = d.status + (d.progress ? ` ${d.progress}%` : '');
+      }
+    }, 700);
+  } catch(e) {
+    dlBtn.disabled = false; dlBtn.textContent = '⬇️ DOWNLOAD THIS';
+    notify('Error: ' + e.message, '❌', 5000);
+  }
+}
+
+function rollAgain() { fetchRandom(randMode); }
+
+function toggleSlideshow() {
+  if (slideshowActive) {
+    stopSlideshow();
+  } else {
+    startSlideshow();
+  }
+}
+
+function startSlideshow() {
+  if (!randMode) return;
+  slideshowActive = true;
+  const btn = document.getElementById('slideshowBtn');
+  if (btn) { btn.textContent = '⏹ STOP'; btn.style.borderColor = 'var(--accent2)'; btn.style.color = 'var(--accent2)'; }
+  notify(`Slideshow started — new pick every ${slideshowSecs}s`, '▶', 3000);
+  scheduleSlideshowNext();
+}
+
+function scheduleSlideshowNext() {
+  if (!slideshowActive) return;
+  slideshowTimer = setTimeout(async () => {
+    if (!slideshowActive) return;
+    await fetchRandom(randMode);
+    scheduleSlideshowNext();
+  }, slideshowSecs * 1000);
+}
+
+function stopSlideshow() {
+  slideshowActive = false;
+  clearTimeout(slideshowTimer);
+  slideshowTimer = null;
+  const btn = document.getElementById('slideshowBtn');
+  if (btn) { btn.textContent = '▶ SLIDESHOW'; btn.style.borderColor = ''; btn.style.color = ''; }
+  notify('Slideshow stopped', '⏹', 2000);
+}
+
+// ── BATCH ─────────────────────────────────────────────────────
+async function runBatch() {
+  const urls = document.getElementById('batchIn').value.split('\n').map(u=>u.trim()).filter(Boolean);
+  if(!urls.length) { notify('Add some URLs!', '⚠️'); return; }
+  const quality = document.getElementById('batchQual').value;
+  
+  document.getElementById('batchQueue').innerHTML = urls.map((u,i)=>`
+    <div class="file-item" id="bq-${i}">
+      <div class="fi-ext fi-img" id="bqs-${i}">⏳</div>
+      <div class="fi-name">${u}</div>
+      <div class="fi-size" id="bql-${i}">QUEUED</div>
+    </div>
+  `).join('');
+  document.getElementById('batchCnt').textContent = `0/${urls.length}`;
+
+  for(let i=0;i<urls.length;i++) {
+    document.getElementById('bqs-'+i).textContent = '⚡';
+    document.getElementById('bql-'+i).textContent = 'STARTING…';
+    document.getElementById('batchFill').style.width = (i/urls.length*100)+'%';
+    document.getElementById('batchCnt').textContent = `${i+1}/${urls.length}`;
+
+    try {
+      const res = await fetch('/api/download', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({url:urls[i], quality, no_watermark:true})
+      });
+      const {dl_id} = await res.json();
+      await waitForDl(dl_id);
+      document.getElementById('bqs-'+i).textContent = '✅';
+      document.getElementById('bql-'+i).textContent = 'DONE';
+      S.dlCount++; updateStats();
+    } catch(e) {
+      document.getElementById('bqs-'+i).textContent = '❌';
+      document.getElementById('bql-'+i).textContent = 'FAILED';
+    }
+  }
+  document.getElementById('batchFill').style.width = '100%';
+  document.getElementById('batchStat').textContent = `✅ Done! ${urls.length} files processed`;
+  notify(`Batch complete! ${urls.length} files`, '📦');
+}
+
+function waitForDl(dl_id) {
+  return new Promise((resolve, reject) => {
+    const iv = setInterval(async () => {
+      const r = await fetch(`/api/progress/${dl_id}`);
+      const d = await r.json();
+      if(d.status==='done') { clearInterval(iv); resolve(); }
+      if(d.status==='error') { clearInterval(iv); reject(d.error); }
+    }, 800);
+    setTimeout(() => { clearInterval(iv); resolve(); }, 120000);
+  });
+}
+
+// ── FILES ─────────────────────────────────────────────────────
+async function loadFiles() {
+  const res = await fetch('/api/files');
+  const files = await res.json();
+  const list = document.getElementById('filesList');
+  document.getElementById('fileCount').textContent = `${files.length} files in downloads folder`;
+
+  if(!files.length) {
+    list.innerHTML = '<div class="prev-ph" style="padding:40px;"><span class="ico">📂</span>No files yet — start downloading!</div>';
+    return;
+  }
+
+  const extCls = {'.mp4':'fi-mp4','.webm':'fi-mp4','.mkv':'fi-mp4','.mp3':'fi-mp3','.wav':'fi-mp3','.flac':'fi-mp3'};
+  list.innerHTML = files.map(f=>`
+    <div class="file-item">
+      <div class="fi-ext ${extCls[f.ext]||'fi-img'}">${f.ext.slice(1).toUpperCase()||'?'}</div>
+      <div class="fi-name">${f.name}</div>
+      <div class="fi-size">${fmtSize(f.size)}</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteFile('${f.name}')" title="Delete">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function deleteFile(name) {
+  if(!confirm(`Delete ${name}?`)) return;
+  await fetch(`/api/delete/${encodeURIComponent(name)}`, {method:'DELETE'});
+  loadFiles();
+  notify(`Deleted: ${name}`, '🗑');
+}
+
+// ── HISTORY ───────────────────────────────────────────────────
+async function loadHistory() {
+  const res = await fetch('/api/history');
+  const hist = await res.json();
+  const list = document.getElementById('histList');
+  document.getElementById('histCount').textContent = `${hist.length} downloads`;
+  if(!hist.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-family:\'Space Mono\',monospace;font-size:11px;"><div style="font-size:36px;margin-bottom:10px;">📂</div>No history yet</div>';
+    return;
+  }
+  list.innerHTML = hist.map(h=>`
+    <div class="dl-item">
+      <div class="dl-thumb">${h.thumbnail?`<img src="${h.thumbnail}" onerror="this.parentElement.innerHTML='🎬'">`:'🎬'}</div>
+      <div class="dl-info">
+        <div class="dl-name">${h.title||h.filename}</div>
+        <div class="dl-meta">${h.extractor||'—'} · ${fmtSize(h.filesize||0)}</div>
+      </div>
+      <div class="dl-actions">
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="openShare('${h.url}')" title="Share">🔗</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearHist() {
+  // Client-side only
+  document.getElementById('histList').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-family:\'Space Mono\',monospace;font-size:11px;">History cleared</div>';
+}
+
+// ── SHARE ─────────────────────────────────────────────────────
+function openShare(url) {
+  const u = url || document.getElementById('urlInput').value || window.location.href;
+  document.getElementById('shareInput').value = u;
+  document.getElementById('shareOverlay').classList.add('open');
+}
+function closeModal() { document.getElementById('shareOverlay').classList.remove('open'); }
+document.getElementById('shareOverlay').addEventListener('click', e => { if(e.target===document.getElementById('shareOverlay')) closeModal(); });
+function copyShare() { navigator.clipboard.writeText(document.getElementById('shareInput').value); notify('Link copied!', '📋'); }
+function share(platform) {
+  const u = encodeURIComponent(document.getElementById('shareInput').value);
+  const map = {
+    whatsapp: `https://wa.me/?text=${u}`,
+    telegram: `https://t.me/share/url?url=${u}`,
+    twitter: `https://twitter.com/intent/tweet?url=${u}`,
+    reddit: `https://reddit.com/submit?url=${u}`,
+    discord: null,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${u}`,
+    email: `mailto:?body=${u}`,
+  };
+  if(platform==='discord') { navigator.clipboard.writeText(document.getElementById('shareInput').value); notify('Copied! Paste in Discord', '🎮'); return; }
+  if(map[platform]) window.open(map[platform],'_blank');
+}
+async function nativeShare() {
+  const u = document.getElementById('shareInput').value;
+  if(navigator.share) { try { await navigator.share({url:u}); } catch(e){} }
+  else { navigator.clipboard.writeText(u); notify('Copied!','📋'); }
+}
+
+// ── FOLDER ────────────────────────────────────────────────────
+async function openFolder() {
+  await fetch('/api/open_folder');
+  notify('Opening downloads folder…', '📂');
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function fmtDur(s) { const m=Math.floor(s/60),sec=s%60; return `${m}:${sec.toString().padStart(2,'0')}`; }
+function fmtNum(n) { return n>1e6?(n/1e6).toFixed(1)+'M':n>1e3?(n/1e3).toFixed(1)+'K':n; }
+function fmtSize(b) { return b>1e9?(b/1e9).toFixed(2)+' GB':b>1e6?(b/1e6).toFixed(1)+' MB':b>1e3?(b/1e3).toFixed(0)+' KB':b+' B'; }
+function updateStats() {
+  document.getElementById('cDl').textContent = S.dlCount;
+  document.getElementById('cSize').textContent = fmtSize(S.totalBytes);
+}
+
+// ── ENTER KEY ────────────────────────────────────────────────
+document.getElementById('urlInput').addEventListener('keydown', e => { if(e.key==='Enter') analyze(); });
+
+// ── INIT ──────────────────────────────────────────────────────
+notify('🚀 MEDIA VAULT ready! Supports 1000+ sites via yt-dlp', '🚀', 4000);
+
+// ══════════════════════════════════════════════════
+//  AUTO 24/7 DOWNLOADER — CLIENT JS
+// ══════════════════════════════════════════════════
+
+let autoRunning  = false;
+let autoPaused   = false;
+let autoInterval = null;
+let autoGenres   = {};
+let autoEnabled  = [];
+
+const GENRE_ICONS = {
+  anime_wallpaper:  '🌸',
+  live_wallpaper:   '✨',
+  mature_art:       '🔞',
+  mature_video:     '🔞',
+  anime_art:        '🎨',
+  fantasy:          '🏰',
+  scifi:            '🚀',
+  video_animation:  '🎬',
+};
+
+async function autoStart() {
+  const r = await fetch('/api/auto/start', {method:'POST'});
+  const d = await r.json();
+  if (d.ok) {
+    autoRunning = true; autoPaused = false;
+    updateAutoUI();
+    startAutoPoll();
+    notify('Auto-downloader started — running 24/7', '🤖', 4000);
+    document.getElementById('autoNavBadge').style.display = '';
+  }
+}
+
+async function autoStop() {
+  const r = await fetch('/api/auto/stop', {method:'POST'});
+  const d = await r.json();
+  autoRunning = false; autoPaused = false;
+  clearInterval(autoInterval); autoInterval = null;
+  updateAutoUI();
+  notify('Auto-downloader stopped', '⏹', 3000);
+  document.getElementById('autoNavBadge').style.display = 'none';
+}
+
+async function autoPause() {
+  const r = await fetch('/api/auto/pause', {method:'POST'});
+  const d = await r.json();
+  autoPaused = d.paused;
+  document.getElementById('autoPauseBtn').textContent = autoPaused ? '▶ RESUME' : '⏸ PAUSE';
+  notify(autoPaused ? 'Paused' : 'Resumed', autoPaused ? '⏸' : '▶', 2000);
+}
+
+async function autoSetDelay(val) {
+  await fetch('/api/auto/delay', {method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({delay: val})});
+}
+
+async function autoSendGenres() {
+  await fetch('/api/auto/genres', {method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({genres: autoEnabled})});
+}
+
+function autoSelectAll() {
+  autoEnabled = Object.keys(autoGenres);
+  renderGenreGrid(); autoSendGenres();
+}
+
+function autoSelectNone() {
+  autoEnabled = [];
+  renderGenreGrid(); autoSendGenres();
+}
+
+function autoClearLog() {
+  document.getElementById('autoLog').innerHTML =
+    '<div style="text-align:center;padding:30px;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;">Log cleared</div>';
+}
+
+function renderGenreGrid() {
+  const grid = document.getElementById('genreGrid');
+  if (!grid || !Object.keys(autoGenres).length) return;
+  grid.innerHTML = Object.entries(autoGenres).map(([key, label]) => {
+    const on = autoEnabled.includes(key);
+    const ico = GENRE_ICONS[key] || '🎴';
+    return `<div onclick="autoToggleGenre('${key}')" id="gtog_${key}"
+      style="cursor:pointer;padding:12px 14px;border-radius:10px;border:1px solid ${on?'var(--accent)':'var(--border)'};
+      background:${on?'rgba(0,245,196,.06)':'var(--bg)'};transition:all .2s;user-select:none;">
+      <div style="font-size:18px;margin-bottom:4px;">${ico}</div>
+      <div style="font-size:12px;font-weight:600;color:${on?'var(--accent)':'var(--text2)'};">${label}</div>
+      <div style="font-size:10px;font-family:'Space Mono',monospace;color:${on?'var(--accent)':'var(--text3)'};margin-top:4px;">
+        ${on?'● ON':'○ OFF'}</div>
+    </div>`;
+  }).join('');
+}
+
+function autoToggleGenre(key) {
+  const idx = autoEnabled.indexOf(key);
+  if (idx >= 0) autoEnabled.splice(idx, 1);
+  else autoEnabled.push(key);
+  renderGenreGrid();
+  autoSendGenres();
+}
+
+function updateAutoUI() {
+  document.getElementById('autoStartBtn').style.display  = autoRunning ? 'none' : '';
+  document.getElementById('autoPauseBtn').style.display  = autoRunning ? '' : 'none';
+  document.getElementById('autoStopBtn').style.display   = autoRunning ? '' : 'none';
+}
+
+function startAutoPoll() {
+  if (autoInterval) clearInterval(autoInterval);
+  autoInterval = setInterval(autoPoll, 2000);
+}
+
+async function autoPoll() {
+  try {
+    const r = await fetch('/api/auto/status');
+    const d = await r.json();
+
+    autoRunning = d.running; autoPaused = d.paused;
+    updateAutoUI();
+
+    // Genres
+    if (Object.keys(d.genres).length && !Object.keys(autoGenres).length) {
+      autoGenres  = d.genres;
+      autoEnabled = d.enabled_genres;
+      renderGenreGrid();
+    }
+
+    // Status text
+    const stEl = document.getElementById('autoStatusTxt');
+    if (!d.running)       { stEl.textContent = 'Idle'; stEl.style.color = 'var(--text3)'; }
+    else if (d.paused)    { stEl.textContent = 'Paused'; stEl.style.color = 'var(--accent2)'; }
+    else                  { stEl.textContent = 'Running 24/7'; stEl.style.color = 'var(--accent)'; }
+
+    document.getElementById('autoTotalTxt').textContent = d.total;
+    document.getElementById('autoDiskTxt').textContent  = d.disk_mb + ' MB';
+    document.getElementById('autoPauseBtn').textContent = d.paused ? '▶ RESUME' : '⏸ PAUSE';
+
+    // Current download
+    const curWrap = document.getElementById('autoCurrentWrap');
+    const curTxt  = document.getElementById('autoCurrentTxt');
+    if (d.current) {
+      curWrap.style.display = '';
+      curTxt.innerHTML = `<strong>${d.current.genre}</strong> — ${d.current.title || d.current.tag}
+        <span style="color:var(--text3);font-size:11px;"> by ${d.current.author||'?'}</span>`;
+    } else {
+      curWrap.style.display = 'none';
+    }
+
+    // Log
+    const log = document.getElementById('autoLog');
+    if (d.done.length) {
+      log.innerHTML = d.done.map(e => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);">
+          <span style="font-size:18px;">${GENRE_ICONS[Object.keys(autoGenres).find(k=>autoGenres[k]===e.genre)]||'🎴'}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              ${e.title||e.tag}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;">
+              ${e.genre} · by ${e.author||'?'} · ${e.time}</div>
+          </div>
+          <a href="/api/files" style="font-size:10px;color:var(--accent);font-family:'Space Mono',monospace;">⬇ GET</a>
+        </div>`).join('');
+    }
+  } catch(e) { console.warn('Auto poll error', e); }
+}
+
+// Auto-load status on page load
+window.addEventListener('load', async () => {
+  try {
+    const r = await fetch('/api/auto/status');
+    const d = await r.json();
+    autoGenres  = d.genres;
+    autoEnabled = d.enabled_genres;
+    autoRunning = d.running;
+    autoPaused  = d.paused;
+    renderGenreGrid();
+    updateAutoUI();
+    if (d.running) {
+      startAutoPoll();
+      document.getElementById('autoNavBadge').style.display = '';
+    }
+  } catch(e) {}
+});
+
+
+// ── TELEGRAM STATUS ────────────────────────────────
+async function tgRefresh() {
+  try {
+    const r = await fetch('/api/telegram/status');
+    const d = await r.json();
+    const badge = document.getElementById('tgStatusBadge');
+    if (d.enabled) {
+      badge.textContent = '✅ CONNECTED';
+      badge.style.background = 'rgba(0,245,196,.1)';
+      badge.style.borderColor = 'var(--accent)';
+      badge.style.color = 'var(--accent)';
+    } else if (d.bot_set || d.chat_set) {
+      badge.textContent = '⚠️ INCOMPLETE';
+      badge.style.background = 'rgba(255,200,0,.1)';
+      badge.style.borderColor = '#ffc800';
+      badge.style.color = '#ffc800';
+    } else {
+      badge.textContent = 'NOT SET';
+      badge.style.background = 'var(--bg)';
+      badge.style.borderColor = 'var(--border)';
+      badge.style.color = 'var(--text3)';
+    }
+    if (d.queue_len > 0) {
+      document.getElementById('tgQueueTxt').textContent = `📤 Uploading: ${d.queue_len} file(s) in queue`;
+    } else {
+      document.getElementById('tgQueueTxt').textContent = '';
+    }
+  } catch(e) {}
+}
+
+async function tgTest() {
+  const r = await fetch('/api/telegram/test', {method:'POST'});
+  const d = await r.json();
+  if (d.ok) notify('✅ Test message sent to Telegram!', '📲', 4000);
+  else notify('❌ Failed: ' + (d.error||'Check bot token & chat ID'), '❌', 6000);
+}
+
+// Poll Telegram status every 5s when auto tab is open
+setInterval(() => {
+  if (document.getElementById('sec-auto')?.classList.contains('active')) {
+    tgRefresh();
+  }
+}, 5000);
+
+window.addEventListener('load', tgRefresh);
+
+</script>
+</body>
+</html>
