@@ -15,7 +15,7 @@ except ImportError:
 BASE_DIR = Path(__file__).parent.resolve()
 os.chdir(BASE_DIR)
 
-app = Flask(__name__, template_folder=str(BASE_DIR / "templates"))
+app = Flask(__name__, template_folder=str(BASE_DIR))
 # On Railway/Heroku, use /tmp for downloads (writable, survives the session)
 import tempfile
 _is_cloud = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("DYNO"))
@@ -313,7 +313,7 @@ def thumb_proxy():
 # ── ROOT ROUTE ──────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
-    return send_file(BASE_DIR / "index.html")
+    return render_template("index.html", sites=SUPPORTED_SITES)
 
 
 # ── RANDOM ENDPOINT ───────────────────────────────────────────────────────────
