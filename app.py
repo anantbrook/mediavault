@@ -476,7 +476,7 @@ def get_random():
 def get_info():
     data = request.json or {}
     url  = data.get("url","").strip()
-    if not url: return jsonify({"error":"No URL provided"}), 400
+    if not url: return jsonify({"error":"No URL provided"})
 
     if "deviantart.com" in url:
         try:
@@ -535,7 +535,7 @@ def get_info():
 def start_download():
     data = request.json or {}
     url  = data.get("url","").strip()
-    if not url: return jsonify({"error":"No URL provided"}), 400
+    if not url: return jsonify({"error":"No URL provided"})
     dl_id = str(uuid.uuid4())[:8]
     active_downloads[dl_id] = {"progress":0,"status":"starting","filename":None,"error":None}
     threading.Thread(target=_do_download,
