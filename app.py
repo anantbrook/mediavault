@@ -110,15 +110,20 @@ SOURCES_CONFIG = {
     "wallhaven":  {"label": "Wallhaven",    "mature": True,  "video": False, "image": True,  "enabled": True},
     "xbooru":     {"label": "Xbooru",       "mature": True,  "video": True,  "image": True,  "enabled": True},
     "paheal":     {"label": "Rule34.paheal","mature": True,  "video": True,  "image": True,  "enabled": True},
-    "lolibooru":  {"label": "Lolibooru",    "mature": True,  "video": False, "image": True,  "enabled": True},
+    "lolibooru":  {"label": "Lolibooru",    "mature": True,  "video": False, "image": True,  "enabled": False},
 }
 
 def _fetch_booru(base_url, tag, pid=0, json_key=None, label="Booru"):
     """Generic booru API fetcher (Gelbooru/Danbooru/Konachan/Yande.re style)."""
     results = []
     try:
-        r = req.get(base_url, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=15)
+        r = req.get(base_url, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=10)
         if r.status_code != 200: return results
+        # Check it's actually JSON before parsing
+        ct   = r.headers.get("content-type","")
+        text = r.text.strip()
+        if not text or text[0] not in ("[","{") or "html" in ct or "xml" in ct:
+            return results
         data = r.json()
         posts = []
         if isinstance(data, list): posts = data
@@ -233,10 +238,9 @@ def scrape_da_tag(tag, mature=False, sources=None, video_only=False, image_only=
         results += _fetch_booru(url, tag, label="Xbooru")
 
     # ── Lolibooru ─────────────────────────────────────────────────────────────
-    if "lolibooru" in enabled and SOURCES_CONFIG["lolibooru"]["enabled"] and mature:
-        url = (f"https://lolibooru.moe/post.json?limit=30"
-               f"&tags={quote(tag_u)}&page={pid+1}")
-        results += _fetch_booru(url, tag, label="Lolibooru")
+    # DISABLED: lolibooru.moe always times out from Railway servers
+    # if "lolibooru" in enabled and SOURCES_CONFIG["lolibooru"]["enabled"] and mature:
+    #     pass
 
     # ── Filter by type ────────────────────────────────────────────────────────
     if video_only:
@@ -1027,8 +1031,9 @@ def tg_delete_channel():
 #  Setup: set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in Railway env vars.
 # ══════════════════════════════════════════════════════════════════════════════
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID",   "")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID",   "").strip()
+print(f"[TG] Token: {(TELEGRAM_BOT_TOKEN[:10]+'...') if TELEGRAM_BOT_TOKEN else 'NOT SET'} | Chat ID: {TELEGRAM_CHAT_ID or 'NOT SET'}")
 TG_MAX_FILE_MB     = 50   # Telegram bot API limit per file
 
 _tg_queue   = []          # files waiting to be uploaded
@@ -1037,17 +1042,19 @@ _tg_enabled = False
 
 
 def tg_enabled():
-    return bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)
+    token, chat_id = _get_active_tg()
+    return bool(token and chat_id)
 
 
 def _tg_send_file(filepath, caption=""):
     """Upload one file to Telegram. Returns True on success."""
-    if not tg_enabled():
+    token, chat_id = _get_active_tg()
+    if not token or not chat_id:
         return False
     try:
         fsize_mb = os.path.getsize(filepath) / 1048576
         ext      = Path(filepath).suffix.lower()
-        base_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+        base_url = f"https://api.telegram.org/bot{token}"
 
         # Pick the right Telegram method based on file type
         if ext in (".mp4", ".webm", ".mkv", ".mov"):
@@ -1071,14 +1078,14 @@ def _tg_send_file(filepath, caption=""):
             msg = (f"⚠️ File too large to send ({fsize_mb:.1f} MB):\n"
                    f"`{Path(filepath).name}`\n{caption}")
             req.post(f"{base_url}/sendMessage",
-                     data={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"},
+                     data={"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"},
                      timeout=15)
             return True
 
         with open(filepath, "rb") as f:
             r = req.post(
                 f"{base_url}/{method}",
-                data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption[:1024], "parse_mode": "Markdown"},
+                data={"chat_id": chat_id, "caption": caption[:1024], "parse_mode": "Markdown"},
                 files={field: f},
                 timeout=120
             )
@@ -1086,7 +1093,17 @@ def _tg_send_file(filepath, caption=""):
             print(f"📤 Telegram: sent {Path(filepath).name}")
             return True
         else:
-            print(f"Telegram error {r.status_code}: {r.text[:200]}")
+            resp_json = {}
+            try: resp_json = r.json()
+            except: pass
+            err_code = resp_json.get("error_code", r.status_code)
+            err_desc = resp_json.get("description", r.text[:100])
+            if err_code == 404:
+                # 404 = wrong bot token or the sendVideo/sendPhoto endpoint doesn't exist
+                token_preview = token[:10] + "..." if token else "EMPTY"
+                print(f"Telegram 404: bad token ({token_preview}) or chat_id ({chat_id}). Check Railway env vars.")
+            else:
+                print(f"Telegram error {err_code}: {err_desc}")
             return False
     except Exception as e:
         print(f"Telegram upload error: {e}")
@@ -1156,21 +1173,26 @@ def _tg_hook_direct(url, fname, dl_id):
 
 @app.route("/api/telegram/status")
 def tg_status():
+    token, chat_id = _get_active_tg()
     return jsonify({
-        "enabled":    tg_enabled(),
-        "bot_set":    bool(TELEGRAM_BOT_TOKEN),
-        "chat_set":   bool(TELEGRAM_CHAT_ID),
-        "queue_len":  len(_tg_queue),
+        "enabled":        bool(token and chat_id),
+        "bot_set":        bool(token),
+        "chat_set":       bool(chat_id),
+        "queue_len":      len(_tg_queue),
+        "active_channel": _tg_active_channel,
     })
 
 @app.route("/api/telegram/test", methods=["POST"])
 def tg_test():
     if not tg_enabled():
         return jsonify({"ok": False, "error": "Bot token or chat ID not set"}), 400
+    token, chat_id = _get_active_tg()
+    if not token or not chat_id:
+        return jsonify({"ok": False, "error": "No token or chat ID configured"}), 400
     try:
         r = req.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-            data={"chat_id": TELEGRAM_CHAT_ID,
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            data={"chat_id": chat_id,
                   "text": "✅ *Media Vault* connected!\nDownloads will be sent here automatically.",
                   "parse_mode": "Markdown"},
             timeout=15
