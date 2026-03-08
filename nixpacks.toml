@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python312", "python312Packages.pip", "ffmpeg"]
+
+[phases.install]
+cmds = ["python3 -m pip install flask yt-dlp requests pillow gunicorn"]
+
+[start]
+cmd = "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 300 --log-level debug --capture-output"
