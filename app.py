@@ -51,28 +51,28 @@ QUALITY_MAP = {
 }
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
     "Accept-Language": "en-US,en;q=0.9",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
     "Referer": "https://www.deviantart.com/",
+    "sec-ch-ua": '"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "same-origin",
+    "sec-fetch-user": "?1",
+    "upgrade-insecure-requests": "1",
+    "Cache-Control": "max-age=0",
+    "Cookie": "agegate_state=1; userinfo=mature_content_filter%3D0",
 }
 
-DA_VIDEO_TAGS   = ["animation","3d-animation","motion-graphic","mmd","live-wallpaper","cinemagraph","gif-animation","stop-motion","animatic","vr-360"]
-DA_ART_TAGS     = ["digital-art","fantasy","sci-fi","wallpaper","landscape","character-design","concept-art","illustration","surreal","dark-art","anime","portrait","space","nature","architecture"]
-DA_WALLPAPER_TAGS = ["wallpaper","hd-wallpaper","live-wallpaper","desktop-wallpaper","dual-monitor","4k-wallpaper","minimalist-wallpaper","dark-wallpaper","space-wallpaper","abstract-wallpaper"]
+DA_VIDEO_TAGS   = ["animation","3d_animation","motion","mmd","animated","loop","video","cgi"]
+DA_ART_TAGS     = ["anime","fantasy","landscape","character_design","concept_art","illustration","surreal","portrait","space","nature","architecture","digital_art"]
+DA_WALLPAPER_TAGS = ["wallpaper","hd_wallpaper","desktop_wallpaper","4k_wallpaper","minimalist","dark_wallpaper","space","abstract","nature","landscape"]
 # Mature / sexy wallpaper tags — 10 categories (DA requires age-gate cookie)
-DA_MATURE_TAGS  = [
-    "pinup",            # classic pinup art
-    "figure-study",     # artistic figure / body study
-    "artistic-nude",    # tasteful nudity
-    "sensual",          # sensual digital art
-    "sexy",             # sexy illustrations
-    "glamour",          # glamour photography / art
-    "lingerie",         # lingerie art
-    "bikini",           # bikini wallpapers
-    "ecchi",            # anime-style ecchi art
-    "boudoir",          # boudoir style
-]
+DA_MATURE_TAGS  = ["pinup","bikini","lingerie","ecchi","boudoir","glamour","nude","sexy","figure_study","artistic_nude"]
 
 # ── RSS CACHE — avoids hammering DA and re-fetching identical tokens ──────────
 _rss_cache = {}          # tag -> (timestamp, results)
@@ -89,57 +89,172 @@ def is_direct_video(url):
     return bool(re.search(r'\.(mp4|webm|mkv|avi|mov|flv)(\?.*)?$', url.lower()))
 
 
-def scrape_da_tag(tag, mature=False):
-    """Fetch DeviantArt tag items via RSS with short-lived cache to keep tokens fresh."""
+# ══════════════════════════════════════════════════════════════════════════════
+#  MULTI-SOURCE API FETCHER
+#  All sources work from servers (no IP blocking, free, public APIs)
+#  Sources:
+#    Images/Art : Gelbooru, Danbooru, Konachan, Yande.re, Safebooru, Lolibooru
+#    Wallpapers  : Wallhaven
+#    Mature/18+  : Rule34.xxx, Rule34.paheal, xbooru
+#    Videos      : Rule34.xxx (mp4/webm), Gelbooru video posts
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Which sources are enabled (can be toggled via API)
+SOURCES_CONFIG = {
+    "rule34":     {"label": "Rule34.xxx",   "mature": True,  "video": True,  "image": True,  "enabled": True},
+    "gelbooru":   {"label": "Gelbooru",     "mature": True,  "video": True,  "image": True,  "enabled": True},
+    "danbooru":   {"label": "Danbooru",     "mature": False, "video": False, "image": True,  "enabled": True},
+    "konachan":   {"label": "Konachan",     "mature": False, "video": False, "image": True,  "enabled": True},
+    "yandere":    {"label": "Yande.re",     "mature": True,  "video": False, "image": True,  "enabled": True},
+    "safebooru":  {"label": "Safebooru",    "mature": False, "video": False, "image": True,  "enabled": True},
+    "wallhaven":  {"label": "Wallhaven",    "mature": True,  "video": False, "image": True,  "enabled": True},
+    "xbooru":     {"label": "Xbooru",       "mature": True,  "video": True,  "image": True,  "enabled": True},
+    "paheal":     {"label": "Rule34.paheal","mature": True,  "video": True,  "image": True,  "enabled": True},
+    "lolibooru":  {"label": "Lolibooru",    "mature": True,  "video": False, "image": True,  "enabled": True},
+}
+
+def _fetch_booru(base_url, tag, pid=0, json_key=None, label="Booru"):
+    """Generic booru API fetcher (Gelbooru/Danbooru/Konachan/Yande.re style)."""
+    results = []
+    try:
+        r = req.get(base_url, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=15)
+        if r.status_code != 200: return results
+        data = r.json()
+        posts = []
+        if isinstance(data, list): posts = data
+        elif isinstance(data, dict):
+            for k in (json_key, "post", "posts", "data", "results"):
+                if k and k in data:
+                    posts = data[k]; break
+        for p in posts[:25]:
+            if not isinstance(p, dict): continue
+            file_url = p.get("file_url") or p.get("large_file_url") or p.get("source","")
+            if not file_url or not file_url.startswith("http"): continue
+            preview = p.get("preview_url") or p.get("preview_file_url") or p.get("sample_url") or file_url
+            is_video = any(file_url.lower().endswith(x) for x in [".mp4",".webm",".mov"])
+            results.append({
+                "title":  f"{label} · {tag}",
+                "author": str(p.get("owner","") or p.get("uploader_id","") or ""),
+                "url":    file_url,
+                "thumbnail": preview,
+                "is_video": is_video,
+                "type": "video" if is_video else "image",
+                "direct": True,
+                "score": int(p.get("score",0) or p.get("up_score",0) or 0),
+            })
+    except Exception as e:
+        print(f"{label} fetch error ({tag}): {e}")
+    return results
+
+
+def scrape_da_tag(tag, mature=False, sources=None, video_only=False, image_only=False):
+    """
+    Multi-source fetcher. sources=None means use all enabled sources.
+    video_only=True  → only return video posts
+    image_only=True  → only return image posts
+    """
     now = time.time()
-    cache_key = f"{tag}:{mature}"
+    cache_key = f"{tag}:{mature}:{video_only}:{image_only}:{str(sources)}"
     if cache_key in _rss_cache:
         ts, cached = _rss_cache[cache_key]
         if now - ts < _RSS_TTL:
             return cached
 
+    tag_u = tag.replace("-","_").replace(" ","_")
+    pid   = random.randint(0, 8)
     results = []
 
-    # 1. Try DA RSS feed — public, no auth, no scraping
-    try:
-        rss_url = f"https://backend.deviantart.com/rss.xml?type=deviation&q=tag%3A{quote(tag)}&offset={random.randint(0,100)}"
-        rss_headers = dict(HEADERS)
-        if mature:
-            rss_headers["Cookie"] = "agegate_state=1; userinfo=mature_content_filter%3D0; Secure"
-        r = req.get(rss_url, headers=rss_headers, timeout=15)
-        if r.status_code == 200:
-            items = re.findall(r'<item>(.*?)</item>', r.text, re.DOTALL)
-            for item in items[:20]:
-                page_url = re.search(r'<link>(https://www\.deviantart\.com/[^<]+)</link>', item)
-                title    = re.search(r'<title><!\[CDATA\[(.*?)\]\]></title>', item)
-                author   = re.search(r'<media:credit[^>]*><!\[CDATA\[(.*?)\]\]></media:credit>', item)
-                thumb    = re.search(r'<media:thumbnail[^>]+url="([^"]+)"', item)
-                fullimg  = re.search(r'<media:content[^>]+url="([^"]+)"', item)
-                if not page_url: continue
-                results.append({
-                    "title":   title.group(1) if title else tag,
-                    "author":  author.group(1) if author else "",
-                    "url":     page_url.group(1),
-                    "thumbnail": fullimg.group(1) if fullimg else (thumb.group(1) if thumb else None),
-                    "is_video": False,
-                    "type":    "image"
-                })
-    except Exception as e:
-        print("DA RSS error:", e)
+    enabled = sources or [k for k,v in SOURCES_CONFIG.items() if v["enabled"]]
 
-    # 2. Fallback: scrape tag page for links only
-    if not results:
+    # ── Rule34.xxx ────────────────────────────────────────────────────────────
+    if "rule34" in enabled and SOURCES_CONFIG["rule34"]["enabled"]:
+        extra = "+video" if video_only else ""
+        url = (f"https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1"
+               f"&limit=30&tags={quote(tag_u+extra)}&pid={pid}")
+        results += _fetch_booru(url, tag, label="Rule34")
+
+    # ── Gelbooru ──────────────────────────────────────────────────────────────
+    if "gelbooru" in enabled and SOURCES_CONFIG["gelbooru"]["enabled"]:
+        extra = "+video" if video_only else ""
+        url = (f"https://gelbooru.com/index.php?page=dapi&s=post&q=index&json=1"
+               f"&limit=30&tags={quote(tag_u+extra)}&pid={pid}")
+        results += _fetch_booru(url, tag, json_key="post", label="Gelbooru")
+
+    # ── Danbooru ──────────────────────────────────────────────────────────────
+    if "danbooru" in enabled and SOURCES_CONFIG["danbooru"]["enabled"] and not (mature and video_only):
+        url = (f"https://danbooru.donmai.us/posts.json?limit=30"
+               f"&tags={quote(tag_u)}&page={pid+1}")
+        results += _fetch_booru(url, tag, label="Danbooru")
+
+    # ── Konachan ──────────────────────────────────────────────────────────────
+    if "konachan" in enabled and SOURCES_CONFIG["konachan"]["enabled"]:
+        url = (f"https://konachan.com/post.json?limit=30"
+               f"&tags={quote(tag_u)}&page={pid+1}")
+        results += _fetch_booru(url, tag, label="Konachan")
+
+    # ── Yande.re ──────────────────────────────────────────────────────────────
+    if "yandere" in enabled and SOURCES_CONFIG["yandere"]["enabled"]:
+        url = (f"https://yande.re/post.json?limit=30"
+               f"&tags={quote(tag_u)}&page={pid+1}")
+        results += _fetch_booru(url, tag, label="Yande.re")
+
+    # ── Safebooru ─────────────────────────────────────────────────────────────
+    if "safebooru" in enabled and SOURCES_CONFIG["safebooru"]["enabled"] and not mature:
+        url = (f"https://safebooru.org/index.php?page=dapi&s=post&q=index&json=1"
+               f"&limit=30&tags={quote(tag_u)}&pid={pid}")
+        results += _fetch_booru(url, tag, label="Safebooru")
+
+    # ── Wallhaven ─────────────────────────────────────────────────────────────
+    if "wallhaven" in enabled and SOURCES_CONFIG["wallhaven"]["enabled"] and not video_only:
+        purity = "110" if mature else "100"
+        url = (f"https://wallhaven.cc/api/v1/search?q={quote(tag)}"
+               f"&categories=111&purity={purity}&sorting=random&page={pid+1}")
         try:
-            r = req.get(f"https://www.deviantart.com/tag/{quote(tag)}", headers=HEADERS, timeout=15)
-            links = re.findall(r'href="(https://www\.deviantart\.com/[^/"]+/art/[^"]+)"', r.text)
-            for link in list(dict.fromkeys(links))[:15]:
-                results.append({"title": f"DeviantArt · {tag}", "author": "", "url": link,
-                                 "thumbnail": None, "is_video": False, "type": "image"})
+            r = req.get(url, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=15)
+            if r.status_code == 200:
+                for p in r.json().get("data", [])[:20]:
+                    file_url = p.get("path","")
+                    if not file_url: continue
+                    preview  = p.get("thumbs",{}).get("large") or file_url
+                    results.append({
+                        "title":  f"Wallhaven · {tag}",
+                        "author": p.get("uploader",{}).get("username",""),
+                        "url": file_url, "thumbnail": preview,
+                        "is_video": False, "type": "image", "direct": True,
+                        "score": p.get("views", 0),
+                    })
         except Exception as e:
-            print("DA fallback scrape error:", e)
+            print(f"Wallhaven error ({tag}): {e}")
 
-    _rss_cache[cache_key] = (time.time(), results)
-    return results
+    # ── Xbooru ────────────────────────────────────────────────────────────────
+    if "xbooru" in enabled and SOURCES_CONFIG["xbooru"]["enabled"] and mature:
+        url = (f"https://xbooru.com/index.php?page=dapi&s=post&q=index&json=1"
+               f"&limit=30&tags={quote(tag_u)}&pid={pid}")
+        results += _fetch_booru(url, tag, label="Xbooru")
+
+    # ── Lolibooru ─────────────────────────────────────────────────────────────
+    if "lolibooru" in enabled and SOURCES_CONFIG["lolibooru"]["enabled"] and mature:
+        url = (f"https://lolibooru.moe/post.json?limit=30"
+               f"&tags={quote(tag_u)}&page={pid+1}")
+        results += _fetch_booru(url, tag, label="Lolibooru")
+
+    # ── Filter by type ────────────────────────────────────────────────────────
+    if video_only:
+        results = [r for r in results if r["is_video"]]
+    elif image_only:
+        results = [r for r in results if not r["is_video"]]
+
+    # Sort by score, dedupe by URL
+    seen = set()
+    unique = []
+    for r in sorted(results, key=lambda x: x.get("score",0), reverse=True):
+        if r["url"] not in seen:
+            seen.add(r["url"])
+            unique.append(r)
+
+    _rss_cache[cache_key] = (time.time(), unique)
+    return unique
+
 
 def _scrape_da_tag_UNUSED(tag, mature=False):
     """Original scrape method - kept for reference."""
@@ -427,6 +542,10 @@ def start_download():
 
 
 def _do_download(url, quality, fmt, filename, audio_only, no_wm, dl_id):
+    # Direct media URLs (from Rule34, Gelbooru, Wallhaven) — download directly
+    if is_direct_image(url) or is_direct_video(url):
+        _direct(url, filename or url.split("/")[-1].split("?")[0].rsplit(".",1)[0], dl_id); return
+
     if "deviantart.com" in url:
         active_downloads[dl_id]["status"] = "fetching"
         fname = filename or safe_name(url.split("/")[-1]) or "da-media"
@@ -575,6 +694,8 @@ def delete_file(filename):
 
 @app.route("/api/open_folder")
 def open_folder():
+    if _is_cloud:
+        return jsonify({"ok": False, "msg": "Cannot open folder on cloud server"})
     folder = str(DOWNLOAD_DIR.resolve())
     if sys.platform=="win32": os.startfile(folder)
     elif sys.platform=="darwin": os.system(f'open "{folder}"')
@@ -585,52 +706,45 @@ def open_folder():
 AUTO_GENRES = {
     "anime_wallpaper": {
         "label": "🌸 Anime Wallpaper",
-        "tags": ["anime-wallpaper","anime-background","anime-scenery","anime-landscape",
-                 "anime-art","sword-art-online","attack-on-titan","demon-slayer",
-                 "my-hero-academia","naruto","one-piece","studio-ghibli","hd-anime"],
+        "tags": ["anime_wallpaper","anime_background","anime_scenery","sword_art_online",
+                 "attack_on_titan","demon_slayer","my_hero_academia","naruto","one_piece",
+                 "studio_ghibli","hd_anime","anime_landscape","solo_leveling"],
         "mode": "image", "mature": False,
     },
     "live_wallpaper": {
         "label": "✨ Live Wallpaper",
-        "tags": ["live-wallpaper","animated-wallpaper","cinemagraph","loop-animation",
-                 "motion-wallpaper","4k-wallpaper","desktop-wallpaper","gif-animation",
-                 "particle-animation","neon-wallpaper","cyberpunk-wallpaper"],
+        "tags": ["animated_wallpaper","loop","cinemagraph","animated","gif",
+                 "4k_wallpaper","desktop_wallpaper","particle","neon","cyberpunk"],
         "mode": "image", "mature": False,
     },
     "mature_art": {
         "label": "🔞 Mature Art",
-        "tags": ["pinup","sensual","sexy","glamour","lingerie","bikini",
-                 "ecchi","boudoir","artistic-nude","figure-study"],
+        "tags": ["pinup","bikini","lingerie","ecchi","boudoir","glamour","nude","sexy"],
         "mode": "image", "mature": True,
     },
     "mature_video": {
         "label": "🔞 18+ Video",
-        "tags": ["mature-animation","adult-animation","ecchi-anime","hentai-art",
-                 "erotic-art","sexy-animation","adult-mmd","18-plus"],
+        "tags": ["animated","3d","mmd","video","hentai","ecchi_video","loop_video"],
         "mode": "video", "mature": True,
     },
     "anime_art": {
         "label": "🎨 Anime Art",
-        "tags": ["anime","manga-art","chibi","waifu","anime-character",
-                 "fan-art","anime-girl","anime-boy","anime-fantasy","moe"],
+        "tags": ["anime","manga","chibi","waifu","anime_girl","anime_boy","fan_art","moe","kawaii"],
         "mode": "image", "mature": False,
     },
     "fantasy": {
         "label": "🏰 Fantasy",
-        "tags": ["fantasy","fantasy-art","dragon","elf","wizard","dark-fantasy",
-                 "fantasy-landscape","medieval","magic","sword-and-sorcery"],
+        "tags": ["fantasy","dragon","elf","wizard","dark_fantasy","fantasy_landscape","magic","medieval"],
         "mode": "image", "mature": False,
     },
     "scifi": {
         "label": "🚀 Sci-Fi",
-        "tags": ["sci-fi","cyberpunk","space","futuristic","robot","mech",
-                 "space-art","galaxy","alien","dystopia"],
+        "tags": ["sci-fi","cyberpunk","space","futuristic","robot","mech","galaxy","alien","dystopia"],
         "mode": "image", "mature": False,
     },
     "video_animation": {
         "label": "🎬 Animation Video",
-        "tags": ["animation","mmd","3d-animation","motion-graphic","vr-360",
-                 "anime-amv","fan-animation","loop-video","cgi-animation"],
+        "tags": ["animated","mmd","3d_animation","motion","video","loop","cgi"],
         "mode": "video", "mature": False,
     },
 }
@@ -673,13 +787,23 @@ def _auto_fetch_item(genre_key):
 
 
 def _auto_download_item(item):
-    """Download one item at max quality with full fresh-token retry chain."""
+    """Download one item at max quality. For videos, verify 10+ seconds duration."""
     dl_id = "auto_" + str(uuid.uuid4())[:8]
     active_downloads[dl_id] = {"progress":0,"status":"starting","filename":None,"error":None}
     url   = item["url"]
     fname = safe_name(f"{item['genre_key']}_{item['title'] or item['tag']}_{dl_id}")
 
-    # Always call _do_download — it has the full 3-attempt fresh-token chain
+    # For video genres: check file size first — skip tiny files (< 1MB = likely < 10s)
+    if item.get("mode") == "video" and item.get("direct"):
+        try:
+            head = req.head(url, headers=HEADERS, timeout=10, allow_redirects=True)
+            size = int(head.headers.get("content-length", 0))
+            if size > 0 and size < 1_000_000:  # < 1MB = too short
+                active_downloads[dl_id].update({"status":"error","error":"Video too short (<10s), skipped"})
+                return False, None, "too short"
+        except Exception:
+            pass  # proceed anyway if HEAD fails
+
     _do_download(url, "max", "mp4", fname, False, True, dl_id)
 
     status    = active_downloads[dl_id].get("status")
@@ -810,6 +934,90 @@ def auto_set_delay():
     delay = max(3, min(60, int(data.get("delay", 8))))
     auto_state["delay"] = delay
     return jsonify({"ok": True, "delay": delay})
+
+
+# ── SOURCE SELECTION API ───────────────────────────────────────────────────────
+
+@app.route("/api/sources", methods=["GET"])
+def get_sources():
+    return jsonify({k: {
+        "label":   v["label"],
+        "enabled": v["enabled"],
+        "mature":  v["mature"],
+        "video":   v["video"],
+        "image":   v["image"],
+    } for k, v in SOURCES_CONFIG.items()})
+
+@app.route("/api/sources", methods=["POST"])
+def set_sources():
+    data = request.json or {}
+    for key, enabled in data.items():
+        if key in SOURCES_CONFIG:
+            SOURCES_CONFIG[key]["enabled"] = bool(enabled)
+    return jsonify({k: v["enabled"] for k, v in SOURCES_CONFIG.items()})
+
+
+# ── TELEGRAM CHANNEL SELECTOR API ─────────────────────────────────────────────
+# Allows switching which Telegram channel to send files to at runtime
+
+_tg_channels = {}  # name -> {token, chat_id}
+_tg_active_channel = "default"
+
+def _get_active_tg():
+    """Return (token, chat_id) for the active channel."""
+    if _tg_active_channel in _tg_channels:
+        ch = _tg_channels[_tg_active_channel]
+        return ch.get("token",""), ch.get("chat_id","")
+    return TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+
+@app.route("/api/telegram/channels", methods=["GET"])
+def tg_get_channels():
+    safe = {k: {"name": k, "chat_id": v.get("chat_id",""), "active": k == _tg_active_channel}
+            for k, v in _tg_channels.items()}
+    safe["default"] = {
+        "name": "default",
+        "chat_id": TELEGRAM_CHAT_ID,
+        "active": _tg_active_channel == "default"
+    }
+    return jsonify({"channels": safe, "active": _tg_active_channel})
+
+@app.route("/api/telegram/channels", methods=["POST"])
+def tg_add_channel():
+    global _tg_active_channel
+    data    = request.json or {}
+    name    = data.get("name","").strip()
+    token   = data.get("token","").strip()
+    chat_id = data.get("chat_id","").strip()
+    active  = data.get("active", False)
+    if not name or not chat_id:
+        return jsonify({"ok": False, "error": "name and chat_id required"}), 400
+    _tg_channels[name] = {"token": token or TELEGRAM_BOT_TOKEN, "chat_id": chat_id}
+    if active:
+        _tg_active_channel = name
+    return jsonify({"ok": True, "channels": list(_tg_channels.keys()) + ["default"]})
+
+@app.route("/api/telegram/channels/select", methods=["POST"])
+def tg_select_channel():
+    global _tg_active_channel
+    data = request.json or {}
+    name = data.get("name","").strip()
+    if name != "default" and name not in _tg_channels:
+        return jsonify({"ok": False, "error": "Channel not found"}), 404
+    _tg_active_channel = name
+    return jsonify({"ok": True, "active": _tg_active_channel})
+
+@app.route("/api/telegram/channels/delete", methods=["POST"])
+def tg_delete_channel():
+    global _tg_active_channel
+    data = request.json or {}
+    name = data.get("name","").strip()
+    if name == "default":
+        return jsonify({"ok": False, "error": "Cannot delete default channel"}), 400
+    _tg_channels.pop(name, None)
+    if _tg_active_channel == name:
+        _tg_active_channel = "default"
+    return jsonify({"ok": True})
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════

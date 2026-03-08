@@ -223,6 +223,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   <button class="nav-btn" onclick="nav('files',this)"><span class="ni">📁</span>My Files</button>
   <button class="nav-btn" onclick="nav('history',this)"><span class="ni">🕓</span>History</button>
   <button class="nav-btn" onclick="nav('auto',this)" id="autoNavBtn"><span class="ni">🤖</span>Auto 24/7<span class="nav-badge" id="autoNavBadge" style="background:#ff3e6c;display:none;">ON</span></button>
+        <button class="nav-btn" onclick="nav(\'sources\',this)" id="sourcesNavBtn"><span class="ni">🌐</span>Sources</button>
 
   <div class="nav-grp">PLATFORMS</div>
   <div class="site-list" id="siteChips">
@@ -651,7 +652,31 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 <!-- ── SHARE MODAL ── -->
 <div class="overlay" id="shareOverlay">
-  <div class="modal" style="position:relative;">
+  
+<!-- SOURCES SECTION -->
+<div class="sec" id="sec-sources">
+  <div class="sec-head">🌐 Source &amp; Telegram Settings</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:12px;">📡 CONTENT SOURCES</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:12px;">Select which websites to pull content from. All use public APIs — no IP blocking.</div>
+    <div id="sourceGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;"></div>
+    <button class="btn btn-teal btn-sm" onclick="saveSources()" style="width:100%;">💾 Save Source Settings</button>
+  </div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:12px;">✈️ TELEGRAM CHANNELS</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:12px;">Add multiple Telegram channels. Select which one receives downloads.</div>
+    <div id="tgChannelList" style="margin-bottom:12px;"></div>
+    <div style="background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border);">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">➕ ADD NEW CHANNEL</div>
+      <input id="tgChName"   class="inp" placeholder="Channel name (e.g. Anime)" style="margin-bottom:6px;font-size:11px;padding:8px 12px;">
+      <input id="tgChChatId" class="inp" placeholder="Chat ID (e.g. -1001234567890)" style="margin-bottom:6px;font-size:11px;padding:8px 12px;">
+      <input id="tgChToken"  class="inp" placeholder="Bot token (leave blank to use default)" style="margin-bottom:8px;font-size:11px;padding:8px 12px;">
+      <button class="btn btn-teal btn-sm" onclick="addTgChannel()" style="width:100%;">➕ Add Channel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" style="position:relative;">
     <button class="modal-close" onclick="closeModal()">✕</button>
     <h2>🔗 SHARE LINK</h2>
     <div style="font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:12px;">Share this media anywhere</div>
@@ -695,6 +720,7 @@ function nav(id, btn) {
   if(btn) btn.classList.add('active');
   if(id==='files') loadFiles();
   if(id==='history') loadHistory();
+  if(id==='sources') { loadSources(); loadTgChannels(); }
 }
 
 // ── NOTIFY ────────────────────────────────────────────────────
@@ -1162,7 +1188,7 @@ async function loadHistory() {
   const list = document.getElementById('histList');
   document.getElementById('histCount').textContent = `${hist.length} downloads`;
   if(!hist.length) {
-    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-family:\'Space Mono\',monospace;font-size:11px;"><div style="font-size:36px;margin-bottom:10px;">📂</div>No history yet</div>';
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-family:monospace;font-size:11px;"><div style="font-size:36px;margin-bottom:10px;">📂</div>No history yet</div>';
     return;
   }
   list.innerHTML = hist.map(h=>`
@@ -1181,7 +1207,7 @@ async function loadHistory() {
 
 function clearHist() {
   // Client-side only
-  document.getElementById('histList').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-family:\'Space Mono\',monospace;font-size:11px;">History cleared</div>';
+  document.getElementById('histList').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-family:monospace;font-size:11px;">History cleared</div>';
 }
 
 // ── SHARE ─────────────────────────────────────────────────────
@@ -1309,7 +1335,7 @@ function autoSelectNone() {
 
 function autoClearLog() {
   document.getElementById('autoLog').innerHTML =
-    `<div style="text-align:center;padding:30px;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;">Log cleared</div>`;
+    `<div style="text-align:center;padding:30px;color:var(--text3);font-family:monospace;font-size:11px;">Log cleared</div>`;
 }
 
 function renderGenreGrid() {
@@ -1323,7 +1349,7 @@ function renderGenreGrid() {
       background:${on?'rgba(0,245,196,.06)':'var(--bg)'};transition:all .2s;user-select:none;">
       <div style="font-size:18px;margin-bottom:4px;">${ico}</div>
       <div style="font-size:12px;font-weight:600;color:${on?'var(--accent)':'var(--text2)'};">${label}</div>
-      <div style="font-size:10px;font-family:'Space Mono',monospace;color:${on?'var(--accent)':'var(--text3)'};margin-top:4px;">
+      <div style="font-size:10px;font-family:monospace;color:${on?'var(--accent)':'var(--text3)'};margin-top:4px;">
         ${on?'● ON':'○ OFF'}</div>
     </div>`;
   }).join('');
@@ -1393,10 +1419,10 @@ async function autoPoll() {
           <div style="flex:1;min-width:0;">
             <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
               ${e.title||e.tag}</div>
-            <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;">
+            <div style="font-size:10px;color:var(--text3);font-family:monospace;">
               ${e.genre} · by ${e.author||'?'} · ${e.time}</div>
           </div>
-          <a href="/api/files" style="font-size:10px;color:var(--accent);font-family:'Space Mono',monospace;">⬇ GET</a>
+          <a href="/api/files" style="font-size:10px;color:var(--accent);font-family:monospace;">⬇ GET</a>
         </div>`).join('');
     }
   } catch(e) { console.warn('Auto poll error', e); }
@@ -1422,6 +1448,115 @@ window.addEventListener('load', async () => {
 
 
 // ── TELEGRAM STATUS ────────────────────────────────
+// ── SOURCE MANAGEMENT ─────────────────────────────────────────────────────
+let sourcesData = {};
+
+async function loadSources() {
+  try {
+    const r = await fetch('/api/sources');
+    sourcesData = await r.json();
+    renderSourceGrid();
+  } catch(e) { console.error('Sources load error:', e); }
+}
+
+function renderSourceGrid() {
+  const grid = document.getElementById('sourceGrid');
+  if (!grid) return;
+  grid.innerHTML = Object.entries(sourcesData).map(([key, s]) => `
+    <div onclick="toggleSource('${key}')" id="src_${key}" style="
+      padding:10px 12px;border-radius:8px;cursor:pointer;
+      border:1px solid ${s.enabled ? 'var(--accent)' : 'var(--border)'};
+      background:${s.enabled ? 'rgba(0,229,190,0.08)' : 'var(--bg)'};
+      transition:all .2s;">
+      <div style="font-size:11px;font-weight:700;color:${s.enabled ? 'var(--accent)' : 'var(--text2)'};">${s.label}</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:3px;">
+        ${s.image ? '🖼 Image' : ''} ${s.video ? '🎬 Video' : ''} ${s.mature ? '🔞 Mature' : '✅ SFW'}
+      </div>
+      <div style="font-size:9px;margin-top:4px;color:${s.enabled ? 'var(--accent)' : 'var(--text3)'};">
+        ${s.enabled ? '● ON' : '○ OFF'}
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleSource(key) {
+  if (sourcesData[key]) {
+    sourcesData[key].enabled = !sourcesData[key].enabled;
+    renderSourceGrid();
+  }
+}
+
+async function saveSources() {
+  const payload = {};
+  Object.entries(sourcesData).forEach(([k,v]) => payload[k] = v.enabled);
+  await fetch('/api/sources', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+  notify('Sources saved!', '✅');
+}
+
+// ── TELEGRAM CHANNEL MANAGEMENT ───────────────────────────────────────────────
+let tgChannels = {};
+
+async function loadTgChannels() {
+  try {
+    const r = await fetch('/api/telegram/channels');
+    const d = await r.json();
+    tgChannels = d.channels || {};
+    renderTgChannels();
+  } catch(e) { console.error('TG channels load error:', e); }
+}
+
+function renderTgChannels() {
+  const el = document.getElementById('tgChannelList');
+  if (!el) return;
+  const entries = Object.entries(tgChannels);
+  if (!entries.length) { el.innerHTML = '<div style="font-size:10px;color:var(--text3);">No channels configured yet.</div>'; return; }
+  el.innerHTML = entries.map(([name, ch]) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;
+      border:1px solid ${ch.active ? 'var(--accent)' : 'var(--border)'};
+      background:${ch.active ? 'rgba(0,229,190,0.08)' : 'var(--bg)'};margin-bottom:6px;">
+      <div style="flex:1;">
+        <div style="font-size:11px;font-weight:700;color:${ch.active ? 'var(--accent)' : 'var(--text2)'};">
+          ${ch.active ? '● ' : '○ '}${name}
+        </div>
+        <div style="font-size:9px;color:var(--text3);">Chat ID: ${ch.chat_id}</div>
+      </div>
+      ${!ch.active ? `<button class="btn btn-teal btn-sm" onclick="selectTgChannel('${name}')" style="padding:4px 10px;font-size:9px;">USE</button>` : '<span style="font-size:9px;color:var(--accent);">ACTIVE</span>'}
+      ${name !== 'default' ? `<button class="btn btn-ghost btn-sm" onclick="deleteTgChannel('${name}')" style="padding:4px 8px;font-size:9px;">🗑</button>` : ''}
+    </div>
+  `).join('');
+}
+
+async function selectTgChannel(name) {
+  await fetch('/api/telegram/channels/select', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
+  notify(`Switched to channel: ${name}`, '✈️');
+  loadTgChannels();
+}
+
+async function addTgChannel() {
+  const name   = document.getElementById('tgChName').value.trim();
+  const chatId = document.getElementById('tgChChatId').value.trim();
+  const token  = document.getElementById('tgChToken').value.trim();
+  if (!name || !chatId) { notify('Name and Chat ID required', '⚠️'); return; }
+  const r = await fetch('/api/telegram/channels', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, chat_id: chatId, token, active: false})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    notify(`Channel "${name}" added!`, '✅');
+    document.getElementById('tgChName').value = '';
+    document.getElementById('tgChChatId').value = '';
+    document.getElementById('tgChToken').value = '';
+    loadTgChannels();
+  }
+}
+
+async function deleteTgChannel(name) {
+  await fetch('/api/telegram/channels/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
+  notify(`Channel "${name}" deleted`, '🗑');
+  loadTgChannels();
+}
+
 async function tgRefresh() {
   try {
     const r = await fetch('/api/telegram/status');
