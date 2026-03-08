@@ -1,9 +1,15 @@
 import os, sys, json, threading, webbrowser, time, re, uuid, random
 from pathlib import Path
 from urllib.parse import urlparse, quote
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, Response, stream_with_context
 import requests as req
-import yt_dlp
+try:
+    import yt_dlp
+    YT_DLP_AVAILABLE = True
+except ImportError:
+    yt_dlp = None
+    YT_DLP_AVAILABLE = False
+    print("[WARN] yt_dlp not installed — video downloads disabled")
 
 # Always use the folder where app.py lives, regardless of cwd
 BASE_DIR = Path(__file__).parent.resolve()
@@ -217,7 +223,7 @@ def get_da_media_url(page_url):
         )
         if oe.status_code == 200:
             d = oe.json()
-            url = d.get("url") or d.get("thumbnail_url") or d.get("media","").get("gif","") if isinstance(d.get("media"),dict) else None
+            url = d.get("url") or d.get("thumbnail_url") or (d.get("media",{}).get("gif","") if isinstance(d.get("media"),dict) else None)
             if url and url.startswith("http"):
                 media_type = "video" if any(x in url for x in [".mp4",".webm"]) else "image"
                 return url, media_type
@@ -297,7 +303,6 @@ def thumb_proxy():
         r = req.get(url, headers=HEADERS, timeout=15, stream=True)
         r.raise_for_status()
         ct = r.headers.get("content-type","image/jpeg")
-        from flask import Response, stream_with_context
         return Response(stream_with_context(r.iter_content(8192)),
                         content_type=ct,
                         headers={"Cache-Control":"no-store"})
@@ -377,6 +382,8 @@ def get_info():
             return jsonify({"type":t,"title":url.split("/")[-1].split("?")[0],"thumbnail":url if t=="image" else None,
                             "uploader":urlparse(url).netloc,"extractor":"Direct URL","image_url":url})
 
+    if not YT_DLP_AVAILABLE:
+        return jsonify({"error": "yt_dlp not installed on server"}), 500
     try:
         with yt_dlp.YoutubeDL({"quiet":True,"no_warnings":True,"skip_download":True}) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -511,6 +518,8 @@ def _ydlp(url, quality, fmt, filename, audio_only, no_wm, dl_id):
             "merge_output_format": fmt if fmt in ("mp4","mkv","webm") else "mp4",
             "postprocessors":[],"writethumbnail":False,"noplaylist":True}
     if audio_only: opts["postprocessors"].append({"key":"FFmpegExtractAudio","preferredcodec":"mp3","preferredquality":"320"})
+    if not YT_DLP_AVAILABLE:
+        active_downloads[dl_id].update({"status":"error","error":"yt_dlp not installed on server"}); return
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url); fname = ydl.prepare_filename(info)
@@ -540,13 +549,14 @@ def get_progress(dl_id): return jsonify(active_downloads.get(dl_id,{"status":"no
 def serve_file(dl_id):
     info = active_downloads.get(dl_id,{}); fp = info.get("filepath")
     if not fp or not os.path.exists(fp): return jsonify({"error":"File not found"}), 404
-    # Send file to browser, then delete from server to free up /tmp space
     resp = send_file(fp, as_attachment=True, download_name=os.path.basename(fp))
-    @resp.call_on_close
-    def cleanup():
-        try:
-            if os.path.exists(fp): os.remove(fp)
-        except Exception: pass
+    # Only auto-delete on cloud (saves /tmp space); keep files locally
+    if _is_cloud:
+        @resp.call_on_close
+        def cleanup():
+            try:
+                if os.path.exists(fp): os.remove(fp)
+            except Exception: pass
     return resp
 
 @app.route("/api/history")
@@ -571,19 +581,6 @@ def open_folder():
     else: os.system(f'xdg-open "{folder}"')
     return jsonify({"ok":True})
 
-if __name__ == "__main__":
-    port = 5050
-    print(f"\n{'='*52}\n  MEDIA VAULT  —  http://localhost:{port}\n  Downloads: {DOWNLOAD_DIR.resolve()}\n{'='*52}\n")
-    threading.Thread(target=lambda:(time.sleep(1.5),webbrowser.open(f"http://localhost:{port}")),daemon=True).start()
-    port = int(os.environ.get("PORT", port))
-    app.run(host="0.0.0.0", port=port, debug=False)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  24/7 AUTO-DOWNLOADER ENGINE
-#  Continuously downloads anime wallpapers, live wallpapers, mature art,
-#  18+ videos, and any genre at max quality — runs forever in background
-# ══════════════════════════════════════════════════════════════════════════════
 
 AUTO_GENRES = {
     "anime_wallpaper": {
@@ -731,7 +728,6 @@ def _auto_engine():
                         auto_state["done"] = auto_state["done"][:200]
                 print(f"✅ Auto [{entry['genre']}] {fname}")
                 # ── Send to Telegram for permanent storage ──
-                dl_id_match = "auto_" + fname[-8:] if fname else None
                 filepath = None
                 for did, dinfo in active_downloads.items():
                     if dinfo.get("filename") == fname and dinfo.get("filepath"):
@@ -919,6 +915,7 @@ def tg_queue_file(filepath, genre="", title="", author="", tag=""):
     """Add a file to the Telegram upload queue."""
     if not tg_enabled() or not filepath or not os.path.exists(filepath):
         return
+    _ensure_tg_worker()
     caption = (
         f"🎴 *{title or Path(filepath).stem}*\n"
         f"👤 {author or 'Unknown'}\n"
@@ -929,14 +926,16 @@ def tg_queue_file(filepath, genre="", title="", author="", tag=""):
         _tg_queue.append((filepath, caption))
 
 
-# Start Telegram worker thread on startup
-_tg_thread = threading.Thread(target=_tg_worker, daemon=True)
-_tg_thread.start()
+# Start Telegram worker thread only if token is configured
+_tg_thread = None
+def _ensure_tg_worker():
+    global _tg_thread
+    if _tg_thread is None and tg_enabled():
+        _tg_thread = threading.Thread(target=_tg_worker, daemon=True)
+        _tg_thread.start()
 
 
 # ── Hook into auto-downloader: queue every completed file ─────────────────────
-_orig_auto_engine_upload = None  # patched below
-
 def _tg_hook_direct(url, fname, dl_id):
     """Wrapper around _direct that queues file for Telegram after download."""
     _direct(url, fname, dl_id)
@@ -973,3 +972,33 @@ def tg_test():
         return jsonify({"ok": False, "error": r.text}), 400
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5050))
+    # Local: bind to 127.0.0.1 to avoid Windows Firewall popups
+    # Cloud: bind to 0.0.0.0
+    host = "0.0.0.0" if _is_cloud else "127.0.0.1"
+    print(f"\n{'='*52}")
+    print(f"  MEDIA VAULT  —  http://localhost:{port}")
+    print(f"  Downloads: {DOWNLOAD_DIR.resolve()}")
+    print(f"{'='*52}\n")
+    # Open browser 2 seconds after server starts
+    threading.Thread(
+        target=lambda: (time.sleep(2), webbrowser.open(f"http://localhost:{port}")),
+        daemon=True
+    ).start()
+    try:
+        app.run(host=host, port=port, debug=False, use_reloader=False)
+    except Exception as e:
+        print(f"\n[ERROR] Could not start server: {e}")
+        print("Try changing port 5050 to another number in app.py")
+        input("Press Enter to exit...")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  24/7 AUTO-DOWNLOADER ENGINE
+#  Continuously downloads anime wallpapers, live wallpapers, mature art,
+#  18+ videos, and any genre at max quality — runs forever in background
+# ══════════════════════════════════════════════════════════════════════════════
+
