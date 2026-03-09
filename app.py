@@ -3,6 +3,24 @@ from pathlib import Path
 from urllib.parse import urlparse, quote
 from flask import Flask, render_template, request, jsonify, send_file, Response, stream_with_context
 import requests as req
+
+# ── Custom unblock engine (7-strategy waterfall) ─────────────────────────────
+try:
+    import unblock_engine as _ub
+    UNBLOCK_AVAILABLE = True
+    print('[UNBLOCK] Custom unblock engine loaded ✅')
+except ImportError:
+    UNBLOCK_AVAILABLE = False
+    print('[UNBLOCK] unblock_engine.py not found — using basic requests')
+
+# ── URL resolver (hotlink.php / redirect wrappers / expired tokens) ──────────
+try:
+    import url_resolver as _ur
+    RESOLVER_AVAILABLE = True
+    print('[RESOLVER] URL resolver loaded ✅')
+except ImportError:
+    RESOLVER_AVAILABLE = False
+    print('[RESOLVER] url_resolver.py not found')
 try:
     import yt_dlp
     YT_DLP_AVAILABLE = True
@@ -255,11 +273,15 @@ SOURCES_CONFIG = {
 }
 
 def _fetch_booru(base_url, tag, pid=0, json_key=None, label="Booru"):
-    """Generic booru API fetcher (Gelbooru/Danbooru/Konachan/Yande.re style)."""
+    """Generic booru API fetcher — uses unblock engine for 403/rate-limit bypass."""
     results = []
     try:
-        r = req.get(base_url, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=10)
-        if r.status_code != 200: return results
+        # Use unblock engine for API calls too (handles CF/rate-limits on booru APIs)
+        if UNBLOCK_AVAILABLE:
+            r = _ub.get_response(base_url)
+        else:
+            r = req.get(base_url, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=10)
+        if r is None or r.status_code != 200: return results
         # Check it's actually JSON before parsing
         ct   = r.headers.get("content-type","")
         text = r.text.strip()
@@ -276,6 +298,11 @@ def _fetch_booru(base_url, tag, pid=0, json_key=None, label="Booru"):
             if not isinstance(p, dict): continue
             file_url = p.get("file_url") or p.get("large_file_url") or p.get("source","")
             if not file_url or not file_url.startswith("http"): continue
+            # Resolve hotlink wrappers (e.g. xbooru hotlink.php, paheal redirects)
+            if RESOLVER_AVAILABLE and _ur.is_wrapper_url(file_url):
+                resolved = _ur.resolve(file_url)
+                if resolved and resolved != file_url:
+                    file_url = resolved
             preview = p.get("preview_url") or p.get("preview_file_url") or p.get("sample_url") or file_url
             is_video = any(file_url.lower().endswith(x) for x in [".mp4",".webm",".mov"])
             results.append({
@@ -867,9 +894,18 @@ def start_download():
 
 
 def _do_download(url, quality, fmt, filename, audio_only, no_wm, dl_id):
-    # Direct media URLs (from Rule34, Gelbooru, Wallhaven) — download directly
+    # Step 0: Resolve wrapper/hotlink URLs before anything else
+    if RESOLVER_AVAILABLE:
+        resolved = _ur.resolve(url)
+        if resolved and resolved != url and resolved.startswith("http"):
+            print(f"[DL] Resolved wrapper: {url[:50]} → {resolved[:50]}")
+            url = resolved
+
+    # Direct media URLs (images + videos from boorus/CDNs) — always use _direct
+    # yt-dlp CANNOT handle direct .mp4/.webm CDN URLs — it needs page URLs
     if is_direct_image(url) or is_direct_video(url):
-        _direct(url, filename or url.split("/")[-1].split("?")[0].rsplit(".",1)[0], dl_id); return
+        fname = filename or url.split("/")[-1].split("?")[0].rsplit(".",1)[0] or "media"
+        _direct(url, fname, dl_id); return
 
     if "deviantart.com" in url:
         active_downloads[dl_id]["status"] = "fetching"
@@ -922,26 +958,101 @@ def _do_download(url, quality, fmt, filename, audio_only, no_wm, dl_id):
 
 
 def _direct(url, fname, dl_id):
+    """Download a direct media URL using the 7-strategy unblock engine."""
     try:
         active_downloads[dl_id]["status"] = "downloading"
-        r = req.get(url, headers=HEADERS, timeout=30, stream=True); r.raise_for_status()
-        ct = r.headers.get("content-type","")
-        ext_map = {"image/jpeg":".jpg","image/png":".png","image/gif":".gif","image/webp":".webp","video/mp4":".mp4","video/webm":".webm"}
-        ext = ext_map.get(ct.split(";")[0].strip(),"")
+
+        # Step 0: Resolve any hotlink/redirect wrapper to the real URL first
+        if RESOLVER_AVAILABLE and _ur.is_wrapper_url(url):
+            resolved = _ur.resolve(url)
+            if resolved and resolved.startswith("http"):
+                print(f"[RESOLVER] Unwrapped: {url[:60]} → {resolved[:60]}")
+                url = resolved
+
+        # Detect video vs image from URL extension first (faster than content-type)
+        url_lower = url.lower().split("?")[0]
+        is_vid_url = any(url_lower.endswith(x) for x in (".mp4",".webm",".mkv",".mov",".gif"))
+
+        # Build per-domain headers with correct Referer
+        parsed_domain = urlparse(url).netloc
+        dl_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+            "Referer":    f"https://{parsed_domain}/",
+            "Accept":     "video/webm,video/mp4,video/*;q=0.9,*/*;q=0.8" if is_vid_url else "image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Accept-Language": "en-US,en;q=0.9",
+            "DNT": "1",
+            "Range": "bytes=0-",
+        }
+
+        # Try download — videos get longer timeout and more retries
+        r = None
+        timeout = 120 if is_vid_url else 30
+        last_err = ""
+
+        for attempt in range(4):
+            try:
+                if attempt > 0:
+                    import time as _t; _t.sleep(1.5 * attempt)
+                    # Rotate UA on retry
+                    dl_headers["User-Agent"] = random.choice([
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+                        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+                    ])
+                r = req.get(url, headers=dl_headers, timeout=timeout, stream=True, allow_redirects=True)
+                if r.status_code in (200, 206):
+                    break
+                last_err = f"HTTP {r.status_code}"
+                r = None
+            except Exception as ex:
+                last_err = str(ex)
+                r = None
+
+        if r is None:
+            # Last resort: try unblock engine
+            if UNBLOCK_AVAILABLE:
+                r = _ub.get_response(url)
+            if r is None:
+                active_downloads[dl_id].update({"status":"error","error":f"Could not download: {last_err}"})
+                return
+
+        ct = r.headers.get("content-type","").split(";")[0].strip()
+        ext_map = {
+            "image/jpeg":".jpg","image/png":".png","image/gif":".gif",
+            "image/webp":".webp","image/avif":".avif",
+            "video/mp4":".mp4","video/webm":".webm","video/x-matroska":".mkv",
+        }
+        ext = ext_map.get(ct,"")
         if not ext:
-            m = re.search(r'\.(jpg|jpeg|png|gif|webp|mp4|webm)(\?|$)', url.lower())
-            ext = "."+m.group(1) if m else ".jpg"
+            m = re.search(r'\.(jpg|jpeg|png|gif|webp|avif|mp4|webm|mkv|mov)(\?|$)', url.lower())
+            ext = "."+m.group(1) if m else (".mp4" if is_vid_url else ".jpg")
         if ext == ".jpeg": ext = ".jpg"
+
         out = DOWNLOAD_DIR / f"{safe_name(fname)}{ext}"; c = 1
         while out.exists(): out = DOWNLOAD_DIR / f"{safe_name(fname)}_{c}{ext}"; c += 1
+
         total = int(r.headers.get("content-length",0)); done = 0
         with open(out,"wb") as f:
-            for chunk in r.iter_content(65536):
-                if chunk: f.write(chunk); done += len(chunk)
-                if total: active_downloads[dl_id]["progress"] = max(5, min(95, int(done/total*100)))
+            for chunk in r.iter_content(131072):   # 128KB chunks for video
+                if chunk:
+                    f.write(chunk); done += len(chunk)
+                    if total:
+                        active_downloads[dl_id]["progress"] = max(5, min(95, int(done/total*100)))
+                    elif done > 0:
+                        active_downloads[dl_id]["progress"] = min(90, 5 + done // 100000)
+
         fsize = out.stat().st_size
+        min_size = 1024 if is_vid_url else 512
+        if fsize < min_size:
+            out.unlink(missing_ok=True)
+            active_downloads[dl_id].update({"status":"error","error":f"File too small ({fsize}B) — site returned error page"})
+            return
+
+        thumb = url if ext in (".jpg",".png",".webp",".gif",".avif") else ""
         active_downloads[dl_id].update({"progress":100,"status":"done","filename":out.name,"filepath":str(out),"filesize":fsize})
-        download_history.insert(0,{"id":dl_id,"title":out.stem,"url":url,"filename":out.name,"extractor":"Direct","filesize":fsize,"thumbnail":url if ext in [".jpg",".png",".webp",".gif"] else ""})
+        download_history.insert(0,{"id":dl_id,"title":out.stem,"url":url,"filename":out.name,
+                                    "extractor":"Direct","filesize":fsize,"thumbnail":thumb})
     except Exception as e:
         active_downloads[dl_id].update({"status":"error","error":str(e)})
 
@@ -1148,35 +1259,46 @@ def _auto_fetch_item(genre_key):
             "genre_label": genre["label"],
             "tag":         tag,
             "url":         item["url"],
+            "thumbnail":   item.get("thumbnail", item["url"]),
             "title":       item.get("title",""),
             "author":      item.get("author",""),
             "mode":        mode,
             "mature":      genre["mature"],
             "is_video":    item.get("is_video", False),
             "direct":      item.get("direct", True),
+            "score":       item.get("score", 0),
         }
     return None
 
 
 def _auto_download_item(item):
-    """Download one item at max quality. For videos, verify 10+ seconds duration."""
+    """Download one item at max quality."""
     dl_id = "auto_" + str(uuid.uuid4())[:8]
     active_downloads[dl_id] = {"progress":0,"status":"starting","filename":None,"error":None}
     url   = item["url"]
     fname = safe_name(f"{item['genre_key']}_{item['title'] or item['tag']}_{dl_id}")
 
-    # For video genres: check file size — skip < 2MB (likely < 10s)
+    # Step 0: Resolve any wrapper URL first so size check hits real CDN
+    if RESOLVER_AVAILABLE:
+        resolved = _ur.resolve(url)
+        if resolved and resolved != url and resolved.startswith("http"):
+            url = resolved
+            item = dict(item); item["url"] = url  # update item too
+
+    # For video genres: light size check using unblock engine headers
     if item.get("mode") == "video" and item.get("direct"):
         try:
-            head = req.head(url, headers=HEADERS, timeout=10, allow_redirects=True)
+            h = {"User-Agent": HEADERS["User-Agent"], "Referer": f"https://{urlparse(url).netloc}/"}
+            head = req.head(url, headers=h, timeout=10, allow_redirects=True)
             size = int(head.headers.get("content-length", 0))
-            if size > 0 and size < 2_000_000:  # < 2MB = too short
+            # Only skip if we KNOW it's tiny — if head fails, still try download
+            if size > 0 and size < 500_000:  # < 500KB = definitely too short
                 active_downloads[dl_id].update({"status":"error","error":"Video too short, skipped"})
                 return False, None, "too short"
         except Exception:
-            pass
+            pass  # HEAD failed — proceed with download anyway
 
-    # For image genres: reject video URLs that slipped through
+    # For image genres: reject obvious video URLs
     if item.get("mode") == "image":
         if any(url.lower().endswith(x) for x in [".mp4",".webm",".mov"]):
             active_downloads[dl_id].update({"status":"error","error":"Wrong type, skipped"})
@@ -1227,12 +1349,15 @@ def _auto_engine():
             if ok:
                 auto_state["total"] += 1
                 entry = {
-                    "genre":  AUTO_GENRES[genre_key]["label"],
-                    "title":  item["title"],
-                    "author": item["author"],
-                    "tag":    item["tag"],
-                    "file":   fname,
-                    "time":   time.strftime("%H:%M:%S"),
+                    "genre":     AUTO_GENRES[genre_key]["label"],
+                    "title":     item["title"],
+                    "author":    item["author"],
+                    "tag":       item["tag"],
+                    "file":      fname,
+                    "url":       item["url"],
+                    "thumbnail": item.get("thumbnail", ""),
+                    "is_video":  item.get("is_video", False),
+                    "time":      time.strftime("%H:%M:%S"),
                 }
                 with _auto_lock:
                     auto_state["done"].insert(0, entry)
@@ -1254,18 +1379,22 @@ def _auto_engine():
                 with _auto_lock:
                     auto_state["errors"].insert(0, {
                         "genre": AUTO_GENRES[genre_key]["label"],
-                        "url": item["url"], "error": err,
-                        "time": time.strftime("%H:%M:%S"),
+                        "url":   item["url"],
+                        "error": err or "Unknown error",
+                        "time":  time.strftime("%H:%M:%S"),
                     })
                     if len(auto_state["errors"]) > 50:
                         auto_state["errors"] = auto_state["errors"][:50]
+                print(f"❌ Auto [{AUTO_GENRES[genre_key]['label']}] failed: {err}")
 
         except Exception as e:
-            print(f"Auto engine error: {e}")
+            import traceback
+            print(f"Auto engine error: {e}\n{traceback.format_exc()}")
 
         auto_state["current"] = None
-        # Wait between downloads
-        for _ in range(auto_state["delay"] * 2):
+        # Short wait on error, normal wait on success
+        wait = auto_state["delay"] if ok else 3
+        for _ in range(wait * 2):
             if not auto_state["running"]: break
             time.sleep(0.5)
 
@@ -1671,6 +1800,71 @@ def tg_test():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  UNBLOCK ENGINE API ROUTES
+#  Custom 7-strategy waterfall for bypassing 403/429/Cloudflare
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@app.route("/api/resolve", methods=["POST"])
+def resolve_url():
+    """Resolve a hotlink/redirect/wrapper URL to the real direct URL."""
+    data = request.json or {}
+    url  = data.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
+    if not RESOLVER_AVAILABLE:
+        return jsonify({"original": url, "resolved": url, "changed": False, "error": "resolver not loaded"})
+    is_wrapper = _ur.is_wrapper_url(url)
+    resolved   = _ur.resolve(url) if is_wrapper else url
+    return jsonify({
+        "original":   url,
+        "resolved":   resolved,
+        "changed":    resolved != url,
+        "is_wrapper": is_wrapper,
+    })
+
+@app.route("/api/unblock/test", methods=["POST"])
+def unblock_test():
+    """Test if a URL is reachable using the unblock engine."""
+    data = request.json or {}
+    url  = data.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
+    if not UNBLOCK_AVAILABLE:
+        return jsonify({"error": "Unblock engine not loaded"}), 500
+    result = _ub.domain_ok(url)
+    return jsonify(result)
+
+@app.route("/api/unblock/status")
+def unblock_status():
+    """Return unblock engine status and active proxy."""
+    proxy = _ub._proxy_url if UNBLOCK_AVAILABLE else None
+    return jsonify({
+        "available": UNBLOCK_AVAILABLE,
+        "strategies": 7,
+        "proxy": proxy,
+        "session_count": len(_ub._sessions) if UNBLOCK_AVAILABLE else 0,
+    })
+
+@app.route("/api/unblock/proxy", methods=["POST"])
+def unblock_set_proxy():
+    """Set a SOCKS5/HTTP proxy for the unblock engine."""
+    data  = request.json or {}
+    proxy = data.get("proxy", "").strip()
+    if not UNBLOCK_AVAILABLE:
+        return jsonify({"error": "Unblock engine not loaded"}), 500
+    _ub.set_proxy(proxy)
+    return jsonify({"ok": True, "proxy": proxy or None})
+
+@app.route("/api/unblock/clear_sessions", methods=["POST"])
+def unblock_clear_sessions():
+    """Clear all cached sessions (forces fresh connections)."""
+    if UNBLOCK_AVAILABLE:
+        _ub._sessions.clear()
+    return jsonify({"ok": True})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
