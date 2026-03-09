@@ -204,6 +204,17 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 /* ── STATUS BADGE ── */
 .status-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:'Space Mono',monospace;font-size:11px;margin-bottom:4px;}
+
+.stat-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
+.sc-val{font-size:20px;font-weight:700;color:var(--accent);font-family:monospace;}
+.sc-lbl{font-size:9px;color:var(--text3);letter-spacing:2px;margin-top:2px;}
+.bar-col{flex:1;background:var(--accent);border-radius:3px 3px 0 0;min-width:0;transition:height .3s;position:relative;cursor:default;}
+.bar-lbl{flex:1;font-size:8px;color:var(--text3);text-align:center;min-width:0;overflow:hidden;}
+.stat-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.stat-bar-track{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.stat-bar-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .4s;}
+.stat-row-lbl{font-size:10px;color:var(--text2);width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stat-row-val{font-size:10px;color:var(--text3);width:36px;text-align:right;}
 </style>
 </head>
 <body>
@@ -224,6 +235,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   <button class="nav-btn" onclick="nav('history',this)"><span class="ni">🕓</span>History</button>
   <button class="nav-btn" onclick="nav('auto',this)" id="autoNavBtn"><span class="ni">🤖</span>Auto 24/7<span class="nav-badge" id="autoNavBadge" style="background:#ff3e6c;display:none;">ON</span></button>
         <button class="nav-btn" onclick="nav('sources',this)" id="sourcesNavBtn"><span class="ni">🌐</span>Sources</button>
+        <button class="nav-btn" onclick="nav('tglib',this)" id="tglibNavBtn"><span class="ni">✈️</span>TG Library</button>
+        <button class="nav-btn" onclick="nav('stats',this)" id="statsNavBtn"><span class="ni">📊</span>Stats</button>
 
   <div class="nav-grp">PLATFORMS</div>
   <div class="site-list" id="siteChips">
@@ -653,6 +666,80 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <!-- ── SHARE MODAL ── -->
 <div class="overlay" id="shareOverlay">
   
+<!-- STATS SECTION -->
+<div class="sec" id="sec-stats">
+  <div class="sec-head">📊 Stats & Controls</div>
+
+  <!-- KPI cards -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;" id="statsCards">
+    <div class="stat-card" id="sc-files">
+      <div class="sc-val" id="scFiles">—</div><div class="sc-lbl">FILES</div></div>
+    <div class="stat-card" id="sc-size">
+      <div class="sc-val" id="scSize">—</div><div class="sc-lbl">SAVED</div></div>
+    <div class="stat-card" id="sc-videos">
+      <div class="sc-val" id="scVideos">—</div><div class="sc-lbl">VIDEOS</div></div>
+    <div class="stat-card" id="sc-images">
+      <div class="sc-val" id="scImages">—</div><div class="sc-lbl">IMAGES</div></div>
+    <div class="stat-card" id="sc-speed">
+      <div class="sc-val" id="scSpeed">—</div><div class="sc-lbl">KB/MIN</div></div>
+    <div class="stat-card" id="sc-errors">
+      <div class="sc-val" id="scErrors">—</div><div class="sc-lbl">ERRORS</div></div>
+  </div>
+
+  <!-- 7-day bar chart -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:12px;">📅 LAST 7 DAYS</div>
+    <div id="barChart" style="display:flex;align-items:flex-end;gap:6px;height:80px;"></div>
+    <div id="barLabels" style="display:flex;gap:6px;margin-top:4px;"></div>
+  </div>
+
+  <!-- Top genres pie-style -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">🎯 TOP GENRES</div>
+    <div id="genreStats"></div>
+  </div>
+
+  <!-- Top sources -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">📡 TOP SOURCES</div>
+    <div id="sourceStats"></div>
+  </div>
+
+  <!-- Blacklist -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;">🚫 TAG BLACKLIST</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Auto-downloader skips any tag matching these keywords.</div>
+    <div id="blacklistTags" style="margin-bottom:10px;min-height:28px;"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <input id="blInput" class="inp" placeholder="Add tag (e.g. gore, scat, loli)" style="flex:1;font-size:11px;padding:8px 12px;">
+      <button class="btn btn-teal btn-sm" onclick="blAdd()" style="padding:8px 14px;">➕</button>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="clearSeen()" style="flex:1;font-size:10px;">🔄 Reset Duplicates (<span id="seenCount">0</span> seen)</button>
+      <button class="btn btn-ghost btn-sm" onclick="statsReset()" style="flex:1;font-size:10px;color:var(--accent2);">🗑 Reset Stats</button>
+    </div>
+  </div>
+</div>
+
+<!-- TG LIBRARY SECTION -->
+<div class="sec" id="sec-tglib">
+  <div class="sec-head">✈️ Telegram Library <span style="font-size:10px;color:var(--text3);font-weight:400;">— permanent storage</span></div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;">
+    <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Every downloaded file is stored in Telegram permanently. Files survive Railway restarts, redeploys, and wipes.</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <button class="btn btn-teal btn-sm" onclick="tgLibLoad()" style="flex:1;">🔄 Refresh</button>
+      <button class="btn btn-ghost btn-sm" onclick="tgLibRebuild()" style="flex:1;">🔃 Rebuild from TG</button>
+    </div>
+    <div id="tgLibStats" style="font-size:10px;color:var(--text3);margin-bottom:10px;"></div>
+  </div>
+  <div id="tgLibGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
+  <div style="display:flex;justify-content:center;gap:8px;margin-top:14px;">
+    <button class="btn btn-ghost btn-sm" id="tgLibPrevBtn" onclick="tgLibPage(-1)" style="display:none;">◀ Prev</button>
+    <span id="tgLibPageInfo" style="font-size:10px;color:var(--text3);padding:6px 10px;"></span>
+    <button class="btn btn-ghost btn-sm" id="tgLibNextBtn" onclick="tgLibPage(1)" style="display:none;">Next ▶</button>
+  </div>
+</div>
+
 <!-- SOURCES SECTION -->
 <div class="sec" id="sec-sources">
   <div class="sec-head">🌐 Source &amp; Telegram Settings</div>
@@ -712,16 +799,7 @@ let randMode        = 'art';
 let nTimer;
 
 // ── NAVIGATION ────────────────────────────────────────────────
-function nav(id, btn) {
-  if (id !== 'random' && slideshowActive) stopSlideshow();
-  document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
-  document.getElementById('sec-'+id).classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  if(id==='files') loadFiles();
-  if(id==='history') loadHistory();
-  if(id==='sources') { loadSources(); loadTgChannels(); }
-}
+
 
 // ── NOTIFY ────────────────────────────────────────────────────
 function notify(msg, ico='✅', dur=3000) {
@@ -795,7 +873,7 @@ async function analyze() {
 
     // Thumbnail
     if(data.thumbnail) {
-      document.getElementById('prevBox').innerHTML = `<img src="${data.thumbnail}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'prev-ph\\'><span class=\\'ico\\'>🖼</span>Preview unavailable</div>'" />`;
+      document.getElementById('prevBox').innerHTML = `<img src="${data.thumbnail ? '/api/thumb?url='+encodeURIComponent(data.thumbnail) : ''}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'prev-ph\\'><span class=\\'ico\\'>🖼</span>Preview unavailable</div>'" />`;
     }
 
     document.getElementById('resultArea').style.display = 'grid';
@@ -993,7 +1071,7 @@ async function fetchRandom(mode) {
         </div>`;
     } else if (data.thumbnail) {
       const thumbSrc = data.thumbnail
-        ? (data.thumbnail.includes('wixmp') ? `/api/thumb?url=${encodeURIComponent(data.thumbnail)}` : data.thumbnail)
+        ? `/api/thumb?url=${encodeURIComponent(data.thumbnail)}`
         : null;
       if (thumbSrc) {
         box.innerHTML = `<img src="${thumbSrc}" style="max-width:100%;max-height:250px;border-radius:8px;object-fit:contain;"
@@ -1448,6 +1526,218 @@ window.addEventListener('load', async () => {
 
 
 // ── TELEGRAM STATUS ────────────────────────────────
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  STATS + BLACKLIST
+// ══════════════════════════════════════════════════════════════════════════════
+
+let statsInterval = null;
+
+function fmtBytes(b) {
+  if (b >= 1073741824) return (b/1073741824).toFixed(1)+' GB';
+  if (b >= 1048576)    return (b/1048576).toFixed(1)+' MB';
+  if (b >= 1024)       return (b/1024).toFixed(0)+' KB';
+  return b+' B';
+}
+function fmtUptime(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch('/api/stats');
+    const d = await r.json();
+
+    document.getElementById('scFiles').textContent  = d.total_files.toLocaleString();
+    document.getElementById('scSize').textContent   = fmtBytes(d.total_bytes);
+    document.getElementById('scVideos').textContent = d.total_videos.toLocaleString();
+    document.getElementById('scImages').textContent = d.total_images.toLocaleString();
+    document.getElementById('scSpeed').textContent  = Math.round(d.bytes_per_min/1024);
+    document.getElementById('scErrors').textContent = d.errors;
+    document.getElementById('seenCount').textContent = d.seen_count.toLocaleString();
+
+    // 7-day bar chart
+    const days = Object.entries(d.days7).sort((a,b)=>a[0].localeCompare(b[0]));
+    const maxFiles = Math.max(1, ...days.map(([,v])=>v.files));
+    const barChart  = document.getElementById('barChart');
+    const barLabels = document.getElementById('barLabels');
+    barChart.innerHTML  = days.map(([day,v]) => {
+      const pct = Math.round((v.files/maxFiles)*100);
+      const label = day.slice(5);
+      return `<div class="bar-col" style="height:${Math.max(4,pct)}%" title="${label}: ${v.files} files, ${fmtBytes(v.bytes)}"></div>`;
+    }).join('');
+    barLabels.innerHTML = days.map(([day,v]) =>
+      `<div class="bar-lbl">${day.slice(8)}</div>`
+    ).join('');
+
+    // Genre stats
+    const genres = Object.entries(d.by_genre).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const maxG = Math.max(1, ...genres.map(([,v])=>v));
+    document.getElementById('genreStats').innerHTML = genres.map(([k,v]) => `
+      <div class="stat-row">
+        <div class="stat-row-lbl">${k}</div>
+        <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round(v/maxG*100)}%"></div></div>
+        <div class="stat-row-val">${v}</div>
+      </div>`).join('') || '<div style="font-size:10px;color:var(--text3);">No data yet</div>';
+
+    // Source stats
+    const sources = Object.entries(d.by_source).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const maxS = Math.max(1, ...sources.map(([,v])=>v));
+    document.getElementById('sourceStats').innerHTML = sources.map(([k,v]) => `
+      <div class="stat-row">
+        <div class="stat-row-lbl">${k}</div>
+        <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round(v/maxS*100)}%;background:var(--accent2);"></div></div>
+        <div class="stat-row-val">${v}</div>
+      </div>`).join('') || '<div style="font-size:10px;color:var(--text3);">No data yet</div>';
+
+    // Blacklist
+    await loadBlacklist();
+  } catch(e) { console.error('Stats error:', e); }
+}
+
+async function loadBlacklist() {
+  try {
+    const r = await fetch('/api/blacklist');
+    const d = await r.json();
+    const el = document.getElementById('blacklistTags');
+    if (!d.tags.length) {
+      el.innerHTML = '<div style="font-size:10px;color:var(--text3);">No blacklisted tags yet</div>';
+      return;
+    }
+    el.innerHTML = d.tags.map(t => `
+      <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,59,59,.15);
+        border:1px solid rgba(255,59,59,.3);border-radius:5px;padding:3px 8px;
+        font-size:10px;color:var(--accent2);margin:2px;cursor:pointer;"
+        onclick="blRemove('${t}')" title="Click to remove">
+        🚫 ${t} ✕
+      </span>`).join('');
+  } catch(e) {}
+}
+
+async function blAdd() {
+  const input = document.getElementById('blInput');
+  const raw = input.value.trim();
+  if (!raw) return;
+  const tags = raw.split(',').map(t=>t.trim()).filter(Boolean);
+  await fetch('/api/blacklist/add', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({tags})
+  });
+  input.value = '';
+  notify(`Blacklisted: ${tags.join(', ')}`, '🚫');
+  loadBlacklist();
+}
+
+async function blRemove(tag) {
+  await fetch('/api/blacklist/remove', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({tag})
+  });
+  notify(`Removed: ${tag}`, '✅');
+  loadBlacklist();
+}
+
+async function clearSeen() {
+  await fetch('/api/blacklist/clear_seen', {method:'POST'});
+  notify('Duplicate history cleared — all URLs fresh again', '🔄');
+  document.getElementById('seenCount').textContent = '0';
+}
+
+async function statsReset() {
+  if (!confirm('Reset all stats? This cannot be undone.')) return;
+  await fetch('/api/stats/reset', {method:'POST'});
+  notify('Stats reset', '🗑');
+  loadStats();
+}
+
+document.getElementById('blInput')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') blAdd();
+});
+
+
+// ── TELEGRAM LIBRARY ──────────────────────────────────────────────────────────
+let tgLibCurrentPage = 0;
+let tgLibTotal = 0;
+const TG_LIB_LIMIT = 20;
+
+function nav(id, btn) {
+  if (id !== 'random' && slideshowActive) stopSlideshow();
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(id==='files') loadFiles();
+  if(id==='history') loadHistory();
+  if(id==='sources') { loadSources(); loadTgChannels(); }
+  if(id==='tglib') tgLibLoad();
+  if(id==='stats') { loadStats(); if(statsInterval) clearInterval(statsInterval); statsInterval = setInterval(loadStats, 10000); }
+  if(id!=='stats' && statsInterval) { clearInterval(statsInterval); statsInterval = null; }
+}
+
+async function tgLibLoad(page) {
+  if (page !== undefined) tgLibCurrentPage = page;
+  const grid = document.getElementById('tgLibGrid');
+  const stats = document.getElementById('tgLibStats');
+  grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:11px;">Loading…</div>';
+  try {
+    const r = await fetch(`/api/tgfiles?page=${tgLibCurrentPage}&limit=${TG_LIB_LIMIT}`);
+    const d = await r.json();
+    tgLibTotal = d.total;
+    stats.textContent = `${tgLibTotal} files stored in Telegram`;
+    if (!d.files.length) {
+      grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-size:11px;grid-column:1/-1;">No files yet — start Auto 24/7 to fill your library</div>';
+      return;
+    }
+    grid.innerHTML = d.files.map(f => {
+      const isVideo = f.type === 'video' || f.type === 'animation';
+      const icon = isVideo ? '🎬' : (f.type === 'audio' ? '🎵' : '🖼');
+      const date = new Date(f.timestamp * 1000).toLocaleDateString();
+      const sizeMB = f.size ? (f.size / 1048576).toFixed(1) + ' MB' : '';
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;" onclick="tgLibDownload('${f.file_id}','${f.name}')">
+        <div style="height:90px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:32px;position:relative;">
+          ${f.type==='photo' || f.type==='document' ? `<img src="/api/tgthumb/${f.file_id}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='${icon}'">` : icon}
+          ${isVideo ? '<div style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.6);border-radius:4px;padding:2px 5px;font-size:9px;color:#fff;">▶</div>' : ''}
+        </div>
+        <div style="padding:8px;">
+          <div style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${f.name}">${f.name}</div>
+          <div style="font-size:9px;color:var(--text3);margin-top:3px;">${date} ${sizeMB ? '· ' + sizeMB : ''}</div>
+          <button class="btn btn-teal btn-sm" style="width:100%;margin-top:6px;padding:4px;font-size:9px;" onclick="event.stopPropagation();tgLibDownload('${f.file_id}','${f.name}')">⬇ Download</button>
+        </div>
+      </div>`;
+    }).join('');
+    // Pagination
+    const totalPages = Math.ceil(tgLibTotal / TG_LIB_LIMIT);
+    document.getElementById('tgLibPageInfo').textContent = `Page ${tgLibCurrentPage+1} of ${totalPages}`;
+    document.getElementById('tgLibPrevBtn').style.display = tgLibCurrentPage > 0 ? '' : 'none';
+    document.getElementById('tgLibNextBtn').style.display = tgLibCurrentPage < totalPages-1 ? '' : 'none';
+  } catch(e) {
+    grid.innerHTML = `<div style="text-align:center;padding:30px;color:var(--accent2);font-size:11px;grid-column:1/-1;">Error loading library: ${e.message}</div>`;
+  }
+}
+
+function tgLibPage(dir) {
+  tgLibLoad(tgLibCurrentPage + dir);
+}
+
+async function tgLibDownload(fileId, name) {
+  notify('Preparing download…', '⬇');
+  window.open(`/api/tgfile/${fileId}`, '_blank');
+}
+
+async function tgLibRebuild() {
+  notify('Rebuilding from Telegram history…', '🔃', 5000);
+  try {
+    const r = await fetch('/api/tgrebuild', {method:'POST'});
+    const d = await r.json();
+    notify(`Rebuilt: ${d.count} files found`, '✅');
+    tgLibLoad(0);
+  } catch(e) {
+    notify('Rebuild failed: ' + e.message, '❌');
+  }
+}
+
 // ── SOURCE MANAGEMENT ─────────────────────────────────────────────────────
 let sourcesData = {};
 

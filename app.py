@@ -89,6 +89,115 @@ def is_direct_video(url):
     return bool(re.search(r'\.(mp4|webm|mkv|avi|mov|flv)(\?.*)?$', url.lower()))
 
 
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  TAG BLACKLIST + DUPLICATE DETECTION
+# ══════════════════════════════════════════════════════════════════════════════
+_BL_FILE   = Path("/tmp/mediavault_blacklist.json")
+_SEEN_FILE = Path("/tmp/mediavault_seen.json")
+
+_tag_blacklist: set = set()   # tags to never download
+_seen_urls:     set = set()   # URLs already downloaded (dedup)
+
+def _bl_load():
+    global _tag_blacklist, _seen_urls
+    try:
+        if _BL_FILE.exists():
+            _tag_blacklist = set(json.loads(_BL_FILE.read_text()))
+        if _SEEN_FILE.exists():
+            _seen_urls = set(json.loads(_SEEN_FILE.read_text()))
+            # Keep only last 10000 to avoid memory bloat
+            if len(_seen_urls) > 10000:
+                _seen_urls = set(list(_seen_urls)[-10000:])
+        print(f"[BL] {len(_tag_blacklist)} blacklisted tags, {len(_seen_urls)} seen URLs")
+    except Exception as e:
+        print(f"[BL] Load error: {e}")
+
+def _bl_save():
+    try:
+        _BL_FILE.write_text(json.dumps(list(_tag_blacklist)))
+        _SEEN_FILE.write_text(json.dumps(list(_seen_urls)[-10000:]))
+    except Exception as e:
+        print(f"[BL] Save error: {e}")
+
+def _is_blacklisted(tag: str) -> bool:
+    tag_l = tag.lower()
+    return any(b.lower() in tag_l for b in _tag_blacklist)
+
+def _is_seen(url: str) -> bool:
+    return url in _seen_urls
+
+def _mark_seen(url: str):
+    _seen_urls.add(url)
+    _bl_save()
+
+_bl_load()
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  STATS ENGINE
+# ══════════════════════════════════════════════════════════════════════════════
+_STATS_FILE = Path("/tmp/mediavault_stats.json")
+_stats = {
+    "total_files":    0,
+    "total_bytes":    0,
+    "total_videos":   0,
+    "total_images":   0,
+    "by_genre":       {},   # genre_key -> count
+    "by_source":      {},   # "Rule34" -> count
+    "by_day":         {},   # "2026-03-09" -> {"files":N,"bytes":N}
+    "speed_log":      [],   # last 60 entries: {ts, bytes_per_sec}
+    "errors":         0,
+    "session_start":  time.time(),
+}
+
+def _stats_load():
+    global _stats
+    try:
+        if _STATS_FILE.exists():
+            saved = json.loads(_STATS_FILE.read_text())
+            _stats.update(saved)
+            _stats["session_start"] = time.time()
+    except Exception as e:
+        print(f"[STATS] Load error: {e}")
+
+def _stats_save():
+    try:
+        _STATS_FILE.write_text(json.dumps(_stats))
+    except Exception as e:
+        print(f"[STATS] Save error: {e}")
+
+def _stats_record(filepath, genre_key="manual", source="unknown"):
+    """Call after every successful download."""
+    try:
+        size = os.path.getsize(filepath) if filepath and os.path.exists(filepath) else 0
+        ext  = Path(filepath).suffix.lower() if filepath else ""
+        is_v = ext in (".mp4",".webm",".mov",".gif",".mkv")
+        today = time.strftime("%Y-%m-%d")
+
+        _stats["total_files"]  += 1
+        _stats["total_bytes"]  += size
+        if is_v: _stats["total_videos"] += 1
+        else:    _stats["total_images"] += 1
+
+        _stats["by_genre"][genre_key] = _stats["by_genre"].get(genre_key, 0) + 1
+        _stats["by_source"][source]   = _stats["by_source"].get(source, 0) + 1
+
+        day = _stats["by_day"].setdefault(today, {"files":0,"bytes":0})
+        day["files"]  += 1
+        day["bytes"]  += size
+
+        # Speed log — bytes per second this minute
+        now = time.time()
+        _stats["speed_log"].append({"ts": now, "bytes": size})
+        _stats["speed_log"] = [e for e in _stats["speed_log"] if now - e["ts"] < 3600]  # keep 1hr
+
+        _stats_save()
+    except Exception as e:
+        print(f"[STATS] Record error: {e}")
+
+_stats_load()
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  MULTI-SOURCE API FETCHER
 #  All sources work from servers (no IP blocking, free, public APIs)
@@ -416,17 +525,197 @@ def get_da_media_url(page_url):
 @app.route("/api/thumb")
 def thumb_proxy():
     url = request.args.get("url","").strip()
-    if not url or "wixmp" not in url and "deviantart" not in url:
+    if not url:
         return "", 400
+    # Validate it's an image/media URL (basic safety check)
     try:
-        r = req.get(url, headers=HEADERS, timeout=15, stream=True)
+        from urllib.parse import urlparse as _up
+        parsed = _up(url)
+        if parsed.scheme not in ("http","https"):
+            return "", 400
+    except Exception:
+        return "", 400
+
+    # Build referer-spoofed headers per domain
+    domain = url.split("/")[2] if url.count("/") >= 2 else ""
+    thumb_headers = dict(HEADERS)
+    if "konachan" in domain:
+        thumb_headers["Referer"] = "https://konachan.com/"
+    elif "yande.re" in domain:
+        thumb_headers["Referer"] = "https://yande.re/"
+    elif "gelbooru" in domain:
+        thumb_headers["Referer"] = "https://gelbooru.com/"
+    elif "rule34" in domain:
+        thumb_headers["Referer"] = "https://rule34.xxx/"
+    elif "danbooru" in domain:
+        thumb_headers["Referer"] = "https://danbooru.donmai.us/"
+    elif "wallhaven" in domain:
+        thumb_headers["Referer"] = "https://wallhaven.cc/"
+    elif "wixmp" in domain or "deviantart" in domain:
+        thumb_headers["Referer"] = "https://www.deviantart.com/"
+    else:
+        thumb_headers["Referer"] = f"https://{domain}/"
+
+    try:
+        r = req.get(url, headers=thumb_headers, timeout=15, stream=True)
         r.raise_for_status()
         ct = r.headers.get("content-type","image/jpeg")
+        # Only proxy images/video, not HTML pages
+        if "html" in ct:
+            return "", 404
         return Response(stream_with_context(r.iter_content(8192)),
                         content_type=ct,
-                        headers={"Cache-Control":"no-store"})
+                        headers={"Cache-Control":"public, max-age=3600"})
     except Exception as e:
         return str(e), 502
+
+
+
+
+@app.route("/api/tgfiles")
+def tg_files():
+    """Return all files stored in Telegram (permanent library)."""
+    token, _ = _get_active_tg()
+    page  = int(request.args.get("page", 0))
+    limit = int(request.args.get("limit", 20))
+    items = list(reversed(_tg_db))  # newest first
+    total = len(items)
+    page_items = items[page*limit:(page+1)*limit]
+    result = []
+    for rec in page_items:
+        result.append({
+            "file_id":   rec["file_id"],
+            "type":      rec["type"],
+            "name":      rec["name"],
+            "size":      rec["size"],
+            "caption":   rec["caption"],
+            "timestamp": rec["timestamp"],
+            "msg_id":    rec.get("msg_id",""),
+            "chat_id":   rec.get("chat_id",""),
+        })
+    return jsonify({"files": result, "total": total, "page": page})
+
+@app.route("/api/tgfile/<file_id>")
+def tg_serve_file(file_id):
+    """Proxy a Telegram file to the browser for download."""
+    # Find token for this file
+    token = TELEGRAM_BOT_TOKEN
+    for rec in _tg_db:
+        if rec.get("file_id") == file_id:
+            token = rec.get("token", TELEGRAM_BOT_TOKEN)
+            break
+    dl_url = _tg_get_file_url(file_id, token)
+    if not dl_url:
+        return "File not found", 404
+    try:
+        r = req.get(dl_url, stream=True, timeout=30)
+        r.raise_for_status()
+        ct = r.headers.get("content-type","application/octet-stream")
+        return Response(stream_with_context(r.iter_content(8192)), content_type=ct,
+                        headers={"Content-Disposition": f"attachment"})
+    except Exception as e:
+        return str(e), 502
+
+@app.route("/api/tgthumb/<file_id>")
+def tg_thumb(file_id):
+    """Get a thumbnail for a Telegram file (photo types only)."""
+    token = TELEGRAM_BOT_TOKEN
+    for rec in _tg_db:
+        if rec.get("file_id") == file_id:
+            token = rec.get("token", TELEGRAM_BOT_TOKEN)
+            break
+    dl_url = _tg_get_file_url(file_id, token)
+    if not dl_url:
+        return "", 404
+    try:
+        r = req.get(dl_url, stream=True, timeout=15)
+        ct = r.headers.get("content-type","image/jpeg")
+        return Response(stream_with_context(r.iter_content(8192)), content_type=ct,
+                        headers={"Cache-Control":"public,max-age=86400"})
+    except Exception as e:
+        return str(e), 502
+
+
+@app.route("/api/tgrebuild", methods=["POST"])
+def tg_rebuild():
+    before = len(_tg_db)
+    _tg_rebuild_db_from_history()
+    return jsonify({"ok": True, "count": len(_tg_db), "new": len(_tg_db) - before})
+
+
+# ── BLACKLIST API ─────────────────────────────────────────────────────────────
+
+@app.route("/api/blacklist", methods=["GET"])
+def get_blacklist():
+    return jsonify({"tags": sorted(_tag_blacklist), "seen_count": len(_seen_urls)})
+
+@app.route("/api/blacklist/add", methods=["POST"])
+def add_blacklist():
+    tags = request.json.get("tags", [])
+    if isinstance(tags, str): tags = [tags]
+    for t in tags:
+        t = t.strip().lower()
+        if t: _tag_blacklist.add(t)
+    _bl_save()
+    return jsonify({"ok": True, "tags": sorted(_tag_blacklist)})
+
+@app.route("/api/blacklist/remove", methods=["POST"])
+def remove_blacklist():
+    tag = request.json.get("tag","").strip().lower()
+    _tag_blacklist.discard(tag)
+    _bl_save()
+    return jsonify({"ok": True, "tags": sorted(_tag_blacklist)})
+
+@app.route("/api/blacklist/clear_seen", methods=["POST"])
+def clear_seen():
+    _seen_urls.clear()
+    _bl_save()
+    return jsonify({"ok": True})
+
+# ── STATS API ─────────────────────────────────────────────────────────────────
+
+@app.route("/api/stats")
+def get_stats():
+    now = time.time()
+    # Compute bytes per minute from speed_log
+    recent = [e for e in _stats["speed_log"] if now - e["ts"] < 60]
+    bpm    = sum(e["bytes"] for e in recent)
+    # Last 24h per-hour download counts for graph
+    hourly = {}
+    for day, data in _stats["by_day"].items():
+        hourly[day] = data
+    # Last 7 days
+    days7 = {}
+    for i in range(7):
+        d = time.strftime("%Y-%m-%d", time.gmtime(now - i*86400))
+        days7[d] = _stats["by_day"].get(d, {"files":0,"bytes":0})
+
+    uptime_s = int(now - _stats["session_start"])
+    return jsonify({
+        "total_files":  _stats["total_files"],
+        "total_bytes":  _stats["total_bytes"],
+        "total_videos": _stats["total_videos"],
+        "total_images": _stats["total_images"],
+        "errors":       _stats["errors"],
+        "by_genre":     _stats["by_genre"],
+        "by_source":    _stats["by_source"],
+        "days7":        days7,
+        "bytes_per_min":bpm,
+        "uptime_s":     uptime_s,
+        "seen_count":   len(_seen_urls),
+        "blacklist_count": len(_tag_blacklist),
+    })
+
+@app.route("/api/stats/reset", methods=["POST"])
+def reset_stats():
+    global _stats
+    _stats = {
+        "total_files":0,"total_bytes":0,"total_videos":0,"total_images":0,
+        "by_genre":{},"by_source":{},"by_day":{},"speed_log":[],"errors":0,
+        "session_start": time.time(),
+    }
+    _stats_save()
+    return jsonify({"ok": True})
 
 
 # ── ROOT ROUTE ──────────────────────────────────────────────────────────────
@@ -710,45 +999,57 @@ def open_folder():
 AUTO_GENRES = {
     "anime_wallpaper": {
         "label": "🌸 Anime Wallpaper",
-        "tags": ["anime_wallpaper","anime_background","anime_scenery","sword_art_online",
-                 "attack_on_titan","demon_slayer","my_hero_academia","naruto","one_piece",
-                 "studio_ghibli","hd_anime","anime_landscape","solo_leveling"],
+        "tags": ["wallpaper","anime_wallpaper","scenery","landscape","1920x1080",
+                 "no_humans","sky","nature","city","beautiful_detailed_sky",
+                 "cherry_blossoms","sunset","night_sky","stars","ocean"],
         "mode": "image", "mature": False,
     },
     "live_wallpaper": {
         "label": "✨ Live Wallpaper",
-        "tags": ["animated_wallpaper","loop","cinemagraph","animated","gif",
-                 "4k_wallpaper","desktop_wallpaper","particle","neon","cyberpunk"],
-        "mode": "image", "mature": False,
+        "tags": ["animated_gif","loop","animated","pixel_art","cinemagraph",
+                 "neon","cyberpunk","rain","fire","water","lightning","magic"],
+        "mode": "video", "mature": False,
     },
     "mature_art": {
         "label": "🔞 Mature Art",
-        "tags": ["pinup","bikini","lingerie","ecchi","boudoir","glamour","nude","sexy"],
+        "tags": ["pinup","bikini","lingerie","ecchi","boudoir","large_breasts",
+                 "cleavage","thighhighs","swimsuit","underwear","topless","nude"],
         "mode": "image", "mature": True,
     },
     "mature_video": {
         "label": "🔞 18+ Video",
-        "tags": ["animated","3d","mmd","video","hentai","ecchi_video","loop_video"],
+        "tags": ["animated","3d","mmd","video","animated_gif","loop",
+                 "sex","nude","explicit","hentai","cum","blowjob","sex_toy"],
+        "mode": "video", "mature": True,
+    },
+    "live_wallpaper_18": {
+        "label": "🔞 Live Wallpaper 18+",
+        "tags": ["animated","loop","animated_gif","mmd","3d","jiggle","bouncing_breasts",
+                 "sex","nude","ecchi","bikini","lingerie","strip","undressing"],
         "mode": "video", "mature": True,
     },
     "anime_art": {
         "label": "🎨 Anime Art",
-        "tags": ["anime","manga","chibi","waifu","anime_girl","anime_boy","fan_art","moe","kawaii"],
+        "tags": ["anime","1girl","solo","highres","looking_at_viewer","smile",
+                 "school_uniform","maid","fox_girl","cat_girl","elf","demon_girl"],
         "mode": "image", "mature": False,
     },
     "fantasy": {
         "label": "🏰 Fantasy",
-        "tags": ["fantasy","dragon","elf","wizard","dark_fantasy","fantasy_landscape","magic","medieval"],
+        "tags": ["fantasy","dragon","elf","wizard","magic","armor","sword",
+                 "dark_fantasy","monster_girl","knight","witch","fairy"],
         "mode": "image", "mature": False,
     },
     "scifi": {
         "label": "🚀 Sci-Fi",
-        "tags": ["sci-fi","cyberpunk","space","futuristic","robot","mech","galaxy","alien","dystopia"],
+        "tags": ["cyberpunk","mecha","robot","space","futuristic","android",
+                 "science_fiction","power_armor","spaceship","alien","dystopia"],
         "mode": "image", "mature": False,
     },
     "video_animation": {
         "label": "🎬 Animation Video",
-        "tags": ["animated","mmd","3d_animation","motion","video","loop","cgi"],
+        "tags": ["animated","mmd","3d","animated_gif","loop","video",
+                 "motion","dance","fight","running","flying"],
         "mode": "video", "mature": False,
     },
 }
@@ -771,23 +1072,58 @@ _auto_lock = threading.Lock()
 
 
 def _auto_fetch_item(genre_key):
-    """Fetch one random item for a genre and queue it for download."""
-    genre = AUTO_GENRES[genre_key]
-    tag   = random.choice(genre["tags"])
-    items = scrape_da_tag(tag, mature=genre["mature"])
-    if not items:
-        return None
-    item = random.choice(items)
-    return {
-        "genre_key": genre_key,
-        "genre_label": genre["label"],
-        "tag":   tag,
-        "url":   item["url"],
-        "title": item.get("title",""),
-        "author":item.get("author",""),
-        "mode":  genre["mode"],
-        "mature":genre["mature"],
-    }
+    """Fetch one random item for a genre — strictly filtered by mode."""
+    genre      = AUTO_GENRES[genre_key]
+    mode       = genre["mode"]          # "video" | "image" | "any"
+    video_only = (mode == "video")
+    image_only = (mode == "image")
+
+    # Try up to 5 tags before giving up
+    for _ in range(5):
+        tag   = random.choice(genre["tags"])
+
+        # Skip blacklisted tags
+        if _is_blacklisted(tag):
+            continue
+
+        items = scrape_da_tag(
+            tag,
+            mature     = genre["mature"],
+            video_only = video_only,
+            image_only = image_only,
+        )
+        if not items:
+            continue
+
+        # Extra hard filter — make sure mode matches
+        if video_only:
+            items = [i for i in items if i.get("is_video") or
+                     any(i["url"].lower().endswith(x) for x in [".mp4",".webm",".mov",".gif"])]
+        elif image_only:
+            items = [i for i in items if not i.get("is_video") and
+                     not any(i["url"].lower().endswith(x) for x in [".mp4",".webm",".mov"])]
+
+        # Remove already-seen URLs
+        items = [i for i in items if not _is_seen(i["url"])]
+
+        if not items:
+            continue
+
+        item = random.choice(items)
+        _mark_seen(item["url"])
+        return {
+            "genre_key":   genre_key,
+            "genre_label": genre["label"],
+            "tag":         tag,
+            "url":         item["url"],
+            "title":       item.get("title",""),
+            "author":      item.get("author",""),
+            "mode":        mode,
+            "mature":      genre["mature"],
+            "is_video":    item.get("is_video", False),
+            "direct":      item.get("direct", True),
+        }
+    return None
 
 
 def _auto_download_item(item):
@@ -797,21 +1133,37 @@ def _auto_download_item(item):
     url   = item["url"]
     fname = safe_name(f"{item['genre_key']}_{item['title'] or item['tag']}_{dl_id}")
 
-    # For video genres: check file size first — skip tiny files (< 1MB = likely < 10s)
+    # For video genres: check file size — skip < 2MB (likely < 10s)
     if item.get("mode") == "video" and item.get("direct"):
         try:
             head = req.head(url, headers=HEADERS, timeout=10, allow_redirects=True)
             size = int(head.headers.get("content-length", 0))
-            if size > 0 and size < 1_000_000:  # < 1MB = too short
-                active_downloads[dl_id].update({"status":"error","error":"Video too short (<10s), skipped"})
+            if size > 0 and size < 2_000_000:  # < 2MB = too short
+                active_downloads[dl_id].update({"status":"error","error":"Video too short, skipped"})
                 return False, None, "too short"
         except Exception:
-            pass  # proceed anyway if HEAD fails
+            pass
+
+    # For image genres: reject video URLs that slipped through
+    if item.get("mode") == "image":
+        if any(url.lower().endswith(x) for x in [".mp4",".webm",".mov"]):
+            active_downloads[dl_id].update({"status":"error","error":"Wrong type, skipped"})
+            return False, None, "wrong type"
 
     _do_download(url, "max", "mp4", fname, False, True, dl_id)
 
     status    = active_downloads[dl_id].get("status")
     fname_out = active_downloads[dl_id].get("filename", "")
+    if status == "done" and fname_out:
+        # Detect source from item title
+        src = "unknown"
+        for s in ["Rule34","Gelbooru","Danbooru","Konachan","Yande.re","Wallhaven","Safebooru","Xbooru"]:
+            if s.lower() in item.get("title","").lower():
+                src = s; break
+        fpath = DOWNLOAD_DIR / fname_out if fname_out and not Path(fname_out).is_absolute() else Path(fname_out or "")
+        _stats_record(str(fpath), genre_key=item.get("genre_key","auto"), source=src)
+    else:
+        _stats["errors"] += 1
     return status == "done", fname_out, active_downloads[dl_id].get("error","")
 
 
@@ -938,6 +1290,95 @@ def auto_set_delay():
     delay = max(3, min(60, int(data.get("delay", 8))))
     auto_state["delay"] = delay
     return jsonify({"ok": True, "delay": delay})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  TELEGRAM PERMANENT DATABASE
+#  Stores file_id of every uploaded file — survives Railway restarts
+#  On restart, files are gone from /tmp but Telegram keeps them forever
+#  The db is rebuilt by fetching history from the TG channel on startup
+# ══════════════════════════════════════════════════════════════════════════════
+
+_TG_DB_FILE = Path("/tmp/mediavault_tg_db.json")
+_tg_db: list = []  # in-memory list of {file_id, type, name, size, caption, timestamp}
+
+def _tg_db_load():
+    global _tg_db
+    try:
+        if _TG_DB_FILE.exists():
+            _tg_db = json.loads(_TG_DB_FILE.read_text())
+            print(f"[TG-DB] Loaded {len(_tg_db)} records")
+    except Exception as e:
+        print(f"[TG-DB] Load error: {e}")
+        _tg_db = []
+
+def _tg_db_save(record: dict):
+    """Append one record and persist."""
+    _tg_db.append(record)
+    try:
+        _TG_DB_FILE.write_text(json.dumps(_tg_db, indent=2))
+    except Exception as e:
+        print(f"[TG-DB] Save error: {e}")
+
+def _tg_get_file_url(file_id: str, token: str) -> str:
+    """Get a direct download URL for a Telegram file_id."""
+    try:
+        r = req.get(f"https://api.telegram.org/bot{token}/getFile",
+                    params={"file_id": file_id}, timeout=10)
+        if r.status_code == 200:
+            path = r.json()["result"]["file_path"]
+            return f"https://api.telegram.org/file/bot{token}/{path}"
+    except Exception as e:
+        print(f"[TG-DB] getFile error: {e}")
+    return ""
+
+def _tg_rebuild_db_from_history():
+    """
+    On startup, fetch recent messages from the TG channel and 
+    rebuild the db from file_ids found there.
+    """
+    global _tg_db
+    token, chat_id = _get_active_tg()
+    if not token or not chat_id:
+        return
+    try:
+        r = req.get(
+            f"https://api.telegram.org/bot{token}/getUpdates",
+            params={"limit": 100, "allowed_updates": ["channel_post","message"]},
+            timeout=15
+        )
+        if r.status_code != 200:
+            return
+        updates = r.json().get("result", [])
+        rebuilt = 0
+        for upd in updates:
+            msg = upd.get("message") or upd.get("channel_post") or {}
+            for ftype in ("video","photo","document","animation","audio"):
+                obj = msg.get(ftype)
+                if obj:
+                    if isinstance(obj, list): obj = obj[-1]
+                    file_id = obj.get("file_id","")
+                    if file_id and not any(r["file_id"]==file_id for r in _tg_db):
+                        _tg_db.append({
+                            "file_id":   file_id,
+                            "type":      ftype,
+                            "name":      obj.get("file_name", f"tg_{ftype}_{rebuilt}"),
+                            "size":      obj.get("file_size", 0),
+                            "caption":   (msg.get("caption") or "")[:200],
+                            "timestamp": msg.get("date", time.time()),
+                            "chat_id":   chat_id,
+                            "token":     token,
+                            "msg_id":    msg.get("message_id",""),
+                        })
+                        rebuilt += 1
+        if rebuilt:
+            _TG_DB_FILE.write_text(json.dumps(_tg_db, indent=2))
+            print(f"[TG-DB] Rebuilt {rebuilt} records from TG history")
+    except Exception as e:
+        print(f"[TG-DB] Rebuild error: {e}")
+
+# Load db on startup
+_tg_db_load()
 
 
 # ── SOURCE SELECTION API ───────────────────────────────────────────────────────
@@ -1091,6 +1532,32 @@ def _tg_send_file(filepath, caption=""):
             )
         if r.status_code == 200:
             print(f"📤 Telegram: sent {Path(filepath).name}")
+            # Store file_id in permanent db for later retrieval
+            try:
+                msg      = r.json()
+                result   = msg.get("result", {})
+                # Extract file_id from whichever type was sent
+                for ftype in ("video","photo","document","animation","audio"):
+                    obj = result.get(ftype)
+                    if obj:
+                        if isinstance(obj, list): obj = obj[-1]  # photo = list, take largest
+                        file_id   = obj.get("file_id","")
+                        file_size = obj.get("file_size", 0)
+                        tg_record = {
+                            "file_id":   file_id,
+                            "type":      ftype,
+                            "name":      Path(filepath).name,
+                            "size":      file_size,
+                            "caption":   caption[:200],
+                            "timestamp": time.time(),
+                            "chat_id":   chat_id,
+                            "token":     token,
+                            "msg_id":    result.get("message_id",""),
+                        }
+                        _tg_db_save(tg_record)
+                        break
+            except Exception as db_e:
+                print(f"TG db save error: {db_e}")
             return True
         else:
             resp_json = {}
