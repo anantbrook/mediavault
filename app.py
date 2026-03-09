@@ -273,19 +273,19 @@ SOURCES_CONFIG = {
 }
 
 def _fetch_booru(base_url, tag, pid=0, json_key=None, label="Booru"):
-    """Generic booru API fetcher — uses unblock engine for 403/rate-limit bypass."""
+    """Generic booru API fetcher. Uses direct requests for speed (not unblock engine)."""
     results = []
     try:
-        # Use unblock engine for API calls too (handles CF/rate-limits on booru APIs)
-        if UNBLOCK_AVAILABLE:
-            r = _ub.get_response(base_url)
-        else:
-            r = req.get(base_url, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=10)
+        api_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        r = req.get(base_url, headers=api_headers, timeout=15)
         if r is None or r.status_code != 200: return results
-        # Check it's actually JSON before parsing
         ct   = r.headers.get("content-type","")
         text = r.text.strip()
-        if not text or text[0] not in ("[","{") or "html" in ct or "xml" in ct:
+        if not text or text[0] not in ("[","{") or "html" in ct:
             return results
         data = r.json()
         posts = []
@@ -294,26 +294,49 @@ def _fetch_booru(base_url, tag, pid=0, json_key=None, label="Booru"):
             for k in (json_key, "post", "posts", "data", "results"):
                 if k and k in data:
                     posts = data[k]; break
-        for p in posts[:25]:
+
+        for p in posts[:30]:
             if not isinstance(p, dict): continue
-            file_url = p.get("file_url") or p.get("large_file_url") or p.get("source","")
+
+            file_url = p.get("file_url") or p.get("large_file_url") or ""
             if not file_url or not file_url.startswith("http"): continue
-            # Resolve hotlink wrappers (e.g. xbooru hotlink.php, paheal redirects)
+
+            # Resolve hotlink wrappers (xbooru hotlink.php etc)
             if RESOLVER_AVAILABLE and _ur.is_wrapper_url(file_url):
                 resolved = _ur.resolve(file_url)
                 if resolved and resolved != file_url:
                     file_url = resolved
-            preview = p.get("preview_url") or p.get("preview_file_url") or p.get("sample_url") or file_url
-            is_video = any(file_url.lower().endswith(x) for x in [".mp4",".webm",".mov"])
+
+            # Detect video — check URL extension AND API file_type/image fields
+            url_low = file_url.lower()
+            api_type = str(p.get("file_ext","") or p.get("file_type","") or "").lower()
+            is_video = (
+                any(url_low.endswith(x) for x in (".mp4",".webm",".mov",".flv",".avi")) or
+                api_type in ("mp4","webm","mov","flv","video") or
+                "video" in api_type
+            )
+
+            # For GIFs — treat as video (animated)
+            is_gif = url_low.endswith(".gif") or api_type == "gif"
+
+            preview = (
+                p.get("preview_url") or p.get("preview_file_url") or
+                p.get("sample_url") or p.get("sample_file_url") or
+                file_url
+            )
+
             results.append({
-                "title":  f"{label} · {tag}",
-                "author": str(p.get("owner","") or p.get("uploader_id","") or ""),
-                "url":    file_url,
+                "title":    f"{label} · {tag}",
+                "author":   str(p.get("owner","") or p.get("uploader_id","") or p.get("creator_id","") or ""),
+                "url":      file_url,
                 "thumbnail": preview,
-                "is_video": is_video,
-                "type": "video" if is_video else "image",
-                "direct": True,
-                "score": int(p.get("score",0) or p.get("up_score",0) or 0),
+                "is_video": is_video or is_gif,
+                "is_gif":   is_gif,
+                "type":     "video" if (is_video or is_gif) else "image",
+                "direct":   True,
+                "score":    int(p.get("score",0) or p.get("up_score",0) or 0),
+                "width":    int(p.get("width",0) or 0),
+                "height":   int(p.get("height",0) or 0),
             })
     except Exception as e:
         print(f"{label} fetch error ({tag}): {e}")
@@ -498,86 +521,192 @@ def _scrape_da_tag_UNUSED(tag, mature=False):
 
 def get_da_media_url(page_url):
     """
-    Permanent fix for wixmp 404s:
-    Always fetch a FRESH download URL at call-time via multiple strategies.
-    Never return a stored/cached wixmp token URL — they expire in ~60s.
+    Get the FULL RESOLUTION, UNRESTRICTED media URL from any DeviantArt page.
+    Handles: images, videos (any length), GIFs, mature content.
+    8-strategy waterfall — never returns expired tokens.
     """
-    # ── Strategy 1: oEmbed API (most reliable, returns fresh URL every call) ──
+    da_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Referer": "https://www.deviantart.com/",
+        "Cookie": "agegate_state=1; userinfo=mature_content_filter%3D0; da_is_logged_in=0",
+        "DNT": "1",
+    }
+
+    def _is_alive(url, timeout=8):
+        """Quick check if URL returns 200."""
+        try:
+            h = req.head(url, headers=da_headers, timeout=timeout, allow_redirects=True)
+            return h.status_code in (200, 206)
+        except Exception:
+            return False
+
+    def _clean_wixmp(url):
+        """Strip resize params from wixmp URL to get original resolution."""
+        if not url: return url
+        url = re.sub(r"/v1/fill/w_\d+,h_\d+[^/]*/", "/", url)
+        url = re.sub(r"/v1/crop/[^/]+/", "/", url)
+        return url
+
+    def _decode_wixmp(raw):
+        return raw.replace("\u002F","/").replace("\\/","/").replace("&amp;","&")
+
+    # ── Strategy 1: Eclipse API — returns original full-res URL with fresh token ──
+    try:
+        # Extract deviation ID from URL slug
+        slug_match = re.search(r"-(\d+)$", page_url.rstrip("/"))
+        if slug_match:
+            dev_id = slug_match.group(1)
+            api_url = f"https://www.deviantart.com/_napi/da-browse/api/networkbar/deviation/{dev_id}"
+            api_r = req.get(api_url, headers=da_headers, timeout=12)
+            if api_r.status_code == 200:
+                d = api_r.json()
+                # Try all media fields
+                for path in [
+                    ["deviation","media","baseUri"],
+                    ["deviation","media","prettyName"],
+                    ["deviation","flash","src"],
+                    ["deviation","videos",0,"src"],
+                ]:
+                    try:
+                        v = d
+                        for k in path: v = v[k]
+                        if v and v.startswith("http"):
+                            token_list = d.get("deviation",{}).get("media",{}).get("token",[""])
+                            tok = token_list[0] if token_list else ""
+                            full = f"{v}?token={tok}" if tok else v
+                            if _is_alive(full):
+                                mtype = "video" if any(x in full for x in [".mp4",".webm",".flv"]) else "image"
+                                return full, mtype
+                    except (KeyError, IndexError, TypeError):
+                        pass
+    except Exception as e:
+        print(f"[DA] Eclipse API: {e}")
+
+    # ── Strategy 2: oEmbed — reliable for images, sometimes works for video ──
     try:
         oe = req.get(
             f"https://backend.deviantart.com/oembed?url={quote(page_url)}&format=json",
-            headers=HEADERS, timeout=12
+            headers=da_headers, timeout=12
         )
         if oe.status_code == 200:
             d = oe.json()
-            url = d.get("url") or d.get("thumbnail_url") or (d.get("media",{}).get("gif","") if isinstance(d.get("media"),dict) else None)
-            if url and url.startswith("http"):
-                media_type = "video" if any(x in url for x in [".mp4",".webm"]) else "image"
-                return url, media_type
+            # Try multiple fields — oEmbed returns different things for video vs image
+            candidates = [
+                d.get("url"),
+                d.get("thumbnail_url"),
+                d.get("html",""),  # video embed HTML sometimes has src
+            ]
+            # Extract src from embed HTML
+            embed_html = d.get("html","")
+            src_match = re.search(r"src=['\"]([^'\"]+\.(?:mp4|webm|jpg|png)[^'\"]*)['\"]", embed_html)
+            if src_match:
+                candidates.insert(0, src_match.group(1))
+            for url in candidates:
+                if url and url.startswith("http") and not url.endswith(".html"):
+                    url = _clean_wixmp(url)
+                    if _is_alive(url):
+                        mtype = "video" if any(x in url for x in [".mp4",".webm"]) else "image"
+                        return url, mtype
     except Exception as e:
-        print("oEmbed error:", e)
+        print(f"[DA] oEmbed: {e}")
 
-    # ── Strategy 2: Scrape page for __NEXT_DATA__ and extract fresh download URL ──
+    # ── Strategy 3: Scrape __NEXT_DATA__ — full page JSON contains all media ──
+    html = ""
     try:
-        r = req.get(page_url, headers=HEADERS, timeout=15)
+        r = req.get(page_url, headers=da_headers, timeout=20)
         html = r.text
 
-        # Video first
-        v = re.search(r'"src"\s*:\s*"(https://wixmp[^"]+\.mp4[^"]*)"', html)
-        if v:
-            raw = v.group(1).replace("\\u002F","/").replace("\\/","/")
-            # Re-validate immediately — if token expired, skip
-            try:
-                hd = req.head(raw, headers=HEADERS, timeout=8, allow_redirects=True)
-                if hd.status_code == 200:
+        # 3a: Direct video src pattern in HTML
+        for vpat in [
+            r'"src"\s*:\s*"(https://wixmp[^"]+\.mp4[^"]*)"',
+            r'"src"\s*:\s*"(https://wixmp[^"]+\.webm[^"]*)"',
+            r'<source[^>]+src="([^"]+\.(?:mp4|webm)[^"]*)"',
+        ]:
+            vm = re.search(vpat, html)
+            if vm:
+                raw = _decode_wixmp(vm.group(1))
+                if _is_alive(raw):
                     return raw, "video"
-            except Exception: pass
 
-        # __NEXT_DATA__ — look for download URL specifically (not preview)
+        # 3b: Parse __NEXT_DATA__ JSON for all media fields
         nd = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.DOTALL)
         if nd:
-            def find_download_url(obj, depth=0):
-                if depth > 15: return None
-                if isinstance(obj, dict):
-                    # Prefer keys that indicate full/original resolution
-                    for k in ("src","downloadUrl","download_url","fullview","original"):
-                        v = obj.get(k)
-                        if isinstance(v, str) and v.startswith("http") and any(x in v.lower() for x in [".jpg",".jpeg",".png",".webp",".gif",".mp4"]):
-                            return v
-                    for v in obj.values():
-                        r2 = find_download_url(v, depth+1)
-                        if r2: return r2
-                elif isinstance(obj, list):
-                    for item in obj:
-                        r2 = find_download_url(item, depth+1)
-                        if r2: return r2
-                return None
             try:
-                found = find_download_url(json.loads(nd.group(1)))
-                if found:
-                    # Validate the URL is still alive before returning
-                    try:
-                        hd = req.head(found, headers=HEADERS, timeout=8, allow_redirects=True)
-                        if hd.status_code == 200:
-                            mtype = "video" if any(x in found for x in [".mp4",".webm"]) else "image"
-                            return found, mtype
-                    except Exception:
-                        pass  # token expired — fall through to og:image
-            except Exception: pass
+                data = json.loads(nd.group(1))
 
-        # ── Strategy 3: og:image (always a fresh CDN URL, lower res but reliable) ──
-        og = re.search(r'<meta property="og:image"\s+content="([^"]+)"', html)
-        if og:
-            img = og.group(1).replace("&amp;","&")
-            # Strip resize params to get higher res
-            img = re.sub(r'/v1/fill/w_\d+,h_\d+[^/]*/', '/', img)
-            return img, "image"
+                # Video: look in all media/video keys
+                def find_video(obj, depth=0):
+                    if depth > 20: return None
+                    if isinstance(obj, dict):
+                        for k in ("src","videoSrc","video_src","mp4","webm","src_mp4"):
+                            v = obj.get(k,"")
+                            if isinstance(v, str) and v.startswith("http") and any(x in v for x in [".mp4",".webm"]):
+                                decoded = _decode_wixmp(v)
+                                if _is_alive(decoded): return decoded
+                        for v in obj.values():
+                            r2 = find_video(v, depth+1)
+                            if r2: return r2
+                    elif isinstance(obj, list):
+                        for item in obj:
+                            r2 = find_video(item, depth+1)
+                            if r2: return r2
+                    return None
+
+                vid = find_video(data)
+                if vid:
+                    return vid, "video"
+
+                # Image: prefer "src" > "downloadUrl" > "fullview" > "original"
+                def find_image(obj, depth=0):
+                    if depth > 20: return None
+                    best = {"score": 0, "url": None}
+                    if isinstance(obj, dict):
+                        priority = {"src":10,"downloadUrl":9,"download_url":9,"original":8,"fullview":7,"prettyName":6}
+                        for k, score in priority.items():
+                            v = obj.get(k,"")
+                            if isinstance(v,str) and v.startswith("http") and any(x in v.lower() for x in [".jpg",".jpeg",".png",".webp",".gif",".avif"]):
+                                if score > best["score"]:
+                                    best = {"score":score,"url":_clean_wixmp(_decode_wixmp(v))}
+                        if best["url"] and _is_alive(best["url"]):
+                            return best["url"]
+                        for v in obj.values():
+                            r2 = find_image(v, depth+1)
+                            if r2: return r2
+                    elif isinstance(obj, list):
+                        for item in obj:
+                            r2 = find_image(item, depth+1)
+                            if r2: return r2
+                    return None
+
+                img = find_image(data)
+                if img:
+                    return img, "image"
+
+            except Exception as e:
+                print(f"[DA] NEXT_DATA parse: {e}")
 
     except Exception as e:
-        print("get_da_media_url error:", e)
+        print(f"[DA] Page scrape: {e}")
+
+    # ── Strategy 4: og:image — always fresh, strip resize for full-res ──
+    if html:
+        og = re.search(r'<meta property="og:image"\s+content="([^"]+)"', html)
+        if og:
+            img = _clean_wixmp(og.group(1).replace("&amp;","&"))
+            if _is_alive(img):
+                return img, "image"
+
+        # Strategy 5: Any wixmp image URL in page HTML
+        wix = re.findall(r"(https://[^\s\"'<>]*wixmp[^\s\"'<>]*\.(?:jpg|png|webp|gif)[^\s\"'<>]*)", html)
+        for w in wix[:5]:
+            w2 = _clean_wixmp(_decode_wixmp(w))
+            if _is_alive(w2):
+                return w2, "image"
 
     return None, None
-
 
 
 # ── THUMBNAIL PROXY — fetches wixmp image server-side so tokens never expire ──
@@ -901,9 +1030,22 @@ def _do_download(url, quality, fmt, filename, audio_only, no_wm, dl_id):
             print(f"[DL] Resolved wrapper: {url[:50]} → {resolved[:50]}")
             url = resolved
 
-    # Direct media URLs (images + videos from boorus/CDNs) — always use _direct
-    # yt-dlp CANNOT handle direct .mp4/.webm CDN URLs — it needs page URLs
-    if is_direct_image(url) or is_direct_video(url):
+    # Check URL path without query string for extension
+    url_path_only = url.lower().split("?")[0]
+    _is_direct_img = bool(re.search(r"\.(jpg|jpeg|png|gif|webp|bmp|avif)$", url_path_only))
+    _is_direct_vid = bool(re.search(r"\.(mp4|webm|mkv|avi|mov|flv)$", url_path_only))
+
+    # Also check booru CDN domains — these are always direct downloads
+    _is_booru_cdn = any(d in url for d in [
+        "rule34.xxx/images","us.rule34.xxx","wimg.rule34.xxx",
+        "img2.gelbooru.com","img3.gelbooru.com",
+        "cdn.donmai.us","files.yande.re","konachan.com/data",
+        "img.xbooru.com","xbooru.com/images",
+        "safebooru.org/images","wallhaven.cc/full",
+        "img.rule34.paheal.net","wixmp.com",
+    ])
+
+    if _is_direct_img or _is_direct_vid or _is_booru_cdn:
         fname = filename or url.split("/")[-1].split("?")[0].rsplit(".",1)[0] or "media"
         _direct(url, fname, dl_id); return
 
@@ -958,102 +1100,191 @@ def _do_download(url, quality, fmt, filename, audio_only, no_wm, dl_id):
 
 
 def _direct(url, fname, dl_id):
-    """Download a direct media URL using the 7-strategy unblock engine."""
+    """
+    Download any direct media URL (image or video) with full bypass.
+    Handles: booru CDNs, wixmp, rule34, gelbooru, xbooru, large video files.
+    """
     try:
         active_downloads[dl_id]["status"] = "downloading"
 
-        # Step 0: Resolve any hotlink/redirect wrapper to the real URL first
-        if RESOLVER_AVAILABLE and _ur.is_wrapper_url(url):
+        # Step 0: Resolve hotlink/redirect wrappers
+        if RESOLVER_AVAILABLE:
             resolved = _ur.resolve(url)
-            if resolved and resolved.startswith("http"):
-                print(f"[RESOLVER] Unwrapped: {url[:60]} → {resolved[:60]}")
+            if resolved and resolved != url and resolved.startswith("http"):
+                print(f"[DIRECT] Unwrapped {url[:50]} → {resolved[:50]}")
                 url = resolved
 
-        # Detect video vs image from URL extension first (faster than content-type)
-        url_lower = url.lower().split("?")[0]
-        is_vid_url = any(url_lower.endswith(x) for x in (".mp4",".webm",".mkv",".mov",".gif"))
+        # Step 1: Detect type from URL extension
+        url_path = url.lower().split("?")[0]
+        is_video = any(url_path.endswith(x) for x in (".mp4",".webm",".mkv",".mov",".flv"))
+        is_gif   = url_path.endswith(".gif")
 
-        # Build per-domain headers with correct Referer
-        parsed_domain = urlparse(url).netloc
-        dl_headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
-            "Referer":    f"https://{parsed_domain}/",
-            "Accept":     "video/webm,video/mp4,video/*;q=0.9,*/*;q=0.8" if is_vid_url else "image/avif,image/webp,image/apng,*/*;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br",
+        parsed_domain = urlparse(url).netloc.lstrip("www.")
+
+        # Step 2: Build exact headers for this domain — NO Range header
+        # (Range causes 206 partial content which corrupts files)
+        domain_referers = {
+            "rule34.xxx": "https://rule34.xxx/",
+            "xbooru.com": "https://xbooru.com/",
+            "gelbooru.com": "https://gelbooru.com/",
+            "danbooru.donmai.us": "https://danbooru.donmai.us/",
+            "donmai.us": "https://danbooru.donmai.us/",
+            "konachan.com": "https://konachan.com/",
+            "konachan.net": "https://konachan.com/",
+            "yande.re": "https://yande.re/",
+            "safebooru.org": "https://safebooru.org/",
+            "wallhaven.cc": "https://wallhaven.cc/",
+            "xbooru.com": "https://xbooru.com/",
+            "paheal.net": "https://rule34.paheal.net/",
+            "wixmp.com": "https://www.deviantart.com/",
+            "deviantart.com": "https://www.deviantart.com/",
+            "img.xbooru.com": "https://xbooru.com/",
+        }
+        referer = "https://www.google.com/"
+        for key, ref in domain_referers.items():
+            if key in parsed_domain:
+                referer = ref
+                break
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Referer": referer,
+            "Accept": "video/mp4,video/webm,video/*;q=0.9,*/*;q=0.5" if is_video else "image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
             "DNT": "1",
-            "Range": "bytes=0-",
+            "Sec-Fetch-Dest": "video" if is_video else "image",
+            "Sec-Fetch-Mode": "no-cors",
+            "Sec-Fetch-Site": "cross-site",
         }
 
-        # Try download — videos get longer timeout and more retries
+        # Step 3: Download with retry — NO Range header to avoid partial/corrupt files
+        timeout = 300 if is_video else 60   # 5 min for video, 1 min for images
         r = None
-        timeout = 120 if is_vid_url else 30
         last_err = ""
+        ua_pool = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+        ]
 
-        for attempt in range(4):
+        for attempt in range(5):
             try:
                 if attempt > 0:
-                    import time as _t; _t.sleep(1.5 * attempt)
-                    # Rotate UA on retry
-                    dl_headers["User-Agent"] = random.choice([
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
-                        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
-                    ])
-                r = req.get(url, headers=dl_headers, timeout=timeout, stream=True, allow_redirects=True)
+                    time.sleep(min(2 ** attempt, 10))
+                    headers["User-Agent"] = ua_pool[attempt % len(ua_pool)]
+                    headers["Cache-Control"] = "no-cache"
+                    # On retry 3+, try without Referer (some CDNs block cross-origin)
+                    if attempt >= 3:
+                        headers.pop("Referer", None)
+                        headers.pop("Sec-Fetch-Site", None)
+
+                r = req.get(url, headers=headers, timeout=timeout,
+                            stream=True, allow_redirects=True)
+
                 if r.status_code in (200, 206):
+                    # If 206 partial, check Content-Range to see if it's from byte 0
+                    if r.status_code == 206:
+                        cr = r.headers.get("Content-Range","")
+                        if cr and not cr.startswith("bytes 0-"):
+                            # Not from start — restart without Range
+                            r = req.get(url, headers={**headers, "Range": ""}, timeout=timeout,
+                                        stream=True, allow_redirects=True)
                     break
                 last_err = f"HTTP {r.status_code}"
+                r = None
+
+            except req.exceptions.Timeout:
+                last_err = f"Timeout after {timeout}s"
                 r = None
             except Exception as ex:
                 last_err = str(ex)
                 r = None
 
-        if r is None:
-            # Last resort: try unblock engine
-            if UNBLOCK_AVAILABLE:
-                r = _ub.get_response(url)
-            if r is None:
-                active_downloads[dl_id].update({"status":"error","error":f"Could not download: {last_err}"})
-                return
+        # Step 4: Fallback to unblock engine if all retries failed
+        if r is None and UNBLOCK_AVAILABLE:
+            print(f"[DIRECT] Trying unblock engine for {url[:60]}")
+            r = _ub.get_response(url)
 
-        ct = r.headers.get("content-type","").split(";")[0].strip()
+        if r is None:
+            active_downloads[dl_id].update({"status":"error","error":f"Download failed: {last_err}"})
+            return
+
+        # Step 5: Determine file extension from content-type + URL
+        ct = r.headers.get("content-type","").split(";")[0].strip().lower()
         ext_map = {
-            "image/jpeg":".jpg","image/png":".png","image/gif":".gif",
-            "image/webp":".webp","image/avif":".avif",
-            "video/mp4":".mp4","video/webm":".webm","video/x-matroska":".mkv",
+            "image/jpeg": ".jpg", "image/jpg": ".jpg",
+            "image/png": ".png", "image/gif": ".gif",
+            "image/webp": ".webp", "image/avif": ".avif",
+            "image/bmp": ".bmp", "image/tiff": ".tiff",
+            "video/mp4": ".mp4", "video/webm": ".webm",
+            "video/x-matroska": ".mkv", "video/quicktime": ".mov",
+            "application/octet-stream": ".mp4" if is_video else ".jpg",
         }
-        ext = ext_map.get(ct,"")
+        ext = ext_map.get(ct, "")
         if not ext:
-            m = re.search(r'\.(jpg|jpeg|png|gif|webp|avif|mp4|webm|mkv|mov)(\?|$)', url.lower())
-            ext = "."+m.group(1) if m else (".mp4" if is_vid_url else ".jpg")
+            m = re.search(r"\.(jpg|jpeg|png|gif|webp|avif|mp4|webm|mkv|mov|flv)(\?|$)", url_path)
+            ext = "." + m.group(1) if m else (".mp4" if is_video else ".jpg")
         if ext == ".jpeg": ext = ".jpg"
 
-        out = DOWNLOAD_DIR / f"{safe_name(fname)}{ext}"; c = 1
-        while out.exists(): out = DOWNLOAD_DIR / f"{safe_name(fname)}_{c}{ext}"; c += 1
+        # Step 6: Write to file
+        out = DOWNLOAD_DIR / f"{safe_name(fname)}{ext}"
+        c = 1
+        while out.exists():
+            out = DOWNLOAD_DIR / f"{safe_name(fname)}_{c}{ext}"; c += 1
 
-        total = int(r.headers.get("content-length",0)); done = 0
-        with open(out,"wb") as f:
-            for chunk in r.iter_content(131072):   # 128KB chunks for video
-                if chunk:
-                    f.write(chunk); done += len(chunk)
-                    if total:
-                        active_downloads[dl_id]["progress"] = max(5, min(95, int(done/total*100)))
-                    elif done > 0:
-                        active_downloads[dl_id]["progress"] = min(90, 5 + done // 100000)
+        total = int(r.headers.get("content-length", 0))
+        done = 0
 
+        with open(out, "wb") as f:
+            for chunk in r.iter_content(chunk_size=524288):  # 512KB chunks
+                if not chunk: continue
+                # Sanity check: first chunk should start with image/video magic bytes
+                if done == 0 and len(chunk) >= 4:
+                    magic = chunk[:4]
+                    is_html = chunk[:15].lower().startswith((b"<!doc", b"<html", b"<head"))
+                    if is_html:
+                        active_downloads[dl_id].update({"status":"error","error":"Site returned HTML error page instead of media file"})
+                        out.unlink(missing_ok=True)
+                        return
+                f.write(chunk)
+                done += len(chunk)
+                if total:
+                    active_downloads[dl_id]["progress"] = max(2, min(95, int(done / total * 100)))
+                elif done > 0:
+                    # Unknown size — show KB downloaded
+                    active_downloads[dl_id].update({"progress": min(90, done // 50000), "speed": f"{done//1024}KB"})
+
+        # Step 7: Validate final file
         fsize = out.stat().st_size
-        min_size = 1024 if is_vid_url else 512
+        min_size = 50_000 if is_video else 1_024   # 50KB min for video, 1KB for image
         if fsize < min_size:
+            # Read first bytes to check if it's an error page
+            with open(out,"rb") as f: head_bytes = f.read(64)
             out.unlink(missing_ok=True)
-            active_downloads[dl_id].update({"status":"error","error":f"File too small ({fsize}B) — site returned error page"})
+            if b"<html" in head_bytes.lower() or b"error" in head_bytes.lower():
+                active_downloads[dl_id].update({"status":"error","error":"Site blocked download — returned error page"})
+            else:
+                active_downloads[dl_id].update({"status":"error","error":f"File too small ({fsize} bytes) — download incomplete"})
             return
 
         thumb = url if ext in (".jpg",".png",".webp",".gif",".avif") else ""
-        active_downloads[dl_id].update({"progress":100,"status":"done","filename":out.name,"filepath":str(out),"filesize":fsize})
-        download_history.insert(0,{"id":dl_id,"title":out.stem,"url":url,"filename":out.name,
-                                    "extractor":"Direct","filesize":fsize,"thumbnail":thumb})
+        active_downloads[dl_id].update({
+            "progress": 100, "status": "done",
+            "filename": out.name, "filepath": str(out), "filesize": fsize,
+        })
+        download_history.insert(0, {
+            "id": dl_id, "title": out.stem, "url": url,
+            "filename": out.name, "extractor": "Direct",
+            "filesize": fsize, "thumbnail": thumb,
+        })
+        print(f"[DIRECT] ✅ {out.name} ({fsize//1024}KB)")
+
     except Exception as e:
+        import traceback
+        print(f"[DIRECT] ERROR: {e}\n{traceback.format_exc()}")
         active_downloads[dl_id].update({"status":"error","error":str(e)})
 
 
@@ -1148,10 +1379,12 @@ AUTO_GENRES = {
         "mode": "image", "mature": False,
     },
     "live_wallpaper": {
+        # Tags that actually produce animated .gif/.mp4 on rule34/gelbooru
         "label": "✨ Live Wallpaper",
-        "tags": ["animated_gif","loop","animated","pixel_art","cinemagraph",
-                 "neon","cyberpunk","rain","fire","water","lightning","magic"],
+        "tags": ["animated","animated_gif","loop","cinemagraph",
+                 "rain","fire","water","lightning","magic","neon","cyberpunk"],
         "mode": "video", "mature": False,
+        "sources": ["rule34","gelbooru"],   # only sources that have animated content
     },
     "mature_art": {
         "label": "🔞 Mature Art",
@@ -1161,15 +1394,18 @@ AUTO_GENRES = {
     },
     "mature_video": {
         "label": "🔞 18+ Video",
-        "tags": ["animated","3d","mmd","video","animated_gif","loop",
-                 "sex","nude","explicit","hentai","cum","blowjob","sex_toy"],
+        # These tags on rule34/gelbooru/xbooru reliably return mp4 results
+        "tags": ["animated","3d","mmd","sex","hentai","blowjob","cum",
+                 "penetration","vaginal","ahegao","moaning","orgasm"],
         "mode": "video", "mature": True,
+        "sources": ["rule34","gelbooru","xbooru"],
     },
     "live_wallpaper_18": {
         "label": "🔞 Live Wallpaper 18+",
-        "tags": ["animated","loop","animated_gif","mmd","3d","jiggle","bouncing_breasts",
-                 "sex","nude","ecchi","bikini","lingerie","strip","undressing"],
+        "tags": ["animated","loop","mmd","3d","bouncing_breasts",
+                 "jiggle","strip","undressing","nude","ecchi"],
         "mode": "video", "mature": True,
+        "sources": ["rule34","gelbooru","xbooru"],
     },
     "anime_art": {
         "label": "🎨 Anime Art",
@@ -1191,9 +1427,11 @@ AUTO_GENRES = {
     },
     "video_animation": {
         "label": "🎬 Animation Video",
-        "tags": ["animated","mmd","3d","animated_gif","loop","video",
-                 "motion","dance","fight","running","flying"],
+        # Specific tags that produce animated content on boorus
+        "tags": ["animated","mmd","3d_animation","animated_gif","loop",
+                 "dance","fight","running","motion_blur"],
         "mode": "video", "mature": False,
+        "sources": ["rule34","gelbooru"],
     },
 }
 
@@ -1229,11 +1467,14 @@ def _auto_fetch_item(genre_key):
         if _is_blacklisted(tag):
             continue
 
+        # Use genre-specific source list if defined (video genres need specific sources)
+        genre_sources = genre.get("sources", None)
         items = scrape_da_tag(
             tag,
             mature     = genre["mature"],
             video_only = video_only,
             image_only = image_only,
+            sources    = genre_sources,
         )
         if not items:
             continue
