@@ -21,6 +21,16 @@ try:
 except ImportError:
     RESOLVER_AVAILABLE = False
     print('[RESOLVER] url_resolver.py not found')
+
+# ── GOD MODE — 10-strategy universal download engine ─────────────────────────
+try:
+    import god_mode as _gm
+    GOD_MODE = True
+    print('[GOD MODE] Universal download engine loaded ✅')
+except ImportError:
+    _gm = None
+    GOD_MODE = False
+    print('[GOD MODE] god_mode.py not found')
 try:
     import yt_dlp
     YT_DLP_AVAILABLE = True
@@ -1023,79 +1033,72 @@ def start_download():
 
 
 def _do_download(url, quality, fmt, filename, audio_only, no_wm, dl_id):
-    # Step 0: Resolve wrapper/hotlink URLs before anything else
-    if RESOLVER_AVAILABLE:
-        resolved = _ur.resolve(url)
-        if resolved and resolved != url and resolved.startswith("http"):
-            print(f"[DL] Resolved wrapper: {url[:50]} → {resolved[:50]}")
-            url = resolved
+    """
+    Master download dispatcher — routes through GOD MODE engine.
+    Handles every site, every format, every restriction.
+    """
+    active_downloads[dl_id]["status"] = "fetching"
 
-    # Check URL path without query string for extension
+    def progress(done, total):
+        if total:
+            active_downloads[dl_id]["progress"] = max(2, min(95, int(done/total*100)))
+        active_downloads[dl_id]["status"] = "downloading"
+
+    fname = filename or url.split("/")[-1].split("?")[0].rsplit(".",1)[0] or "media"
+
+    if GOD_MODE:
+        # ── USE GOD MODE ENGINE ────────────────────────────────────────────
+        ok, fpath, err = _gm.download(
+            url       = url,
+            dest_dir  = DOWNLOAD_DIR,
+            dl_id     = dl_id,
+            progress_cb = progress,
+            filename  = safe_name(fname),
+            quality   = quality or "best",
+        )
+        if ok and fpath and os.path.exists(fpath):
+            fsize = os.path.getsize(fpath)
+            active_downloads[dl_id].update({
+                "progress": 100, "status": "done",
+                "filename": os.path.basename(fpath),
+                "filepath": fpath, "filesize": fsize,
+            })
+            download_history.insert(0, {
+                "id": dl_id, "title": os.path.splitext(os.path.basename(fpath))[0],
+                "url": url, "filename": os.path.basename(fpath),
+                "extractor": "GodMode", "filesize": fsize,
+                "thumbnail": url if re.search(r"\.(jpg|png|gif|webp)$", fpath.lower()) else "",
+            })
+            return
+        # God mode failed — store error
+        active_downloads[dl_id].update({"status": "error", "error": err or "God mode failed"})
+        return
+
+    # ── FALLBACK: legacy path (if god_mode.py missing) ────────────────────
     url_path_only = url.lower().split("?")[0]
     _is_direct_img = bool(re.search(r"\.(jpg|jpeg|png|gif|webp|bmp|avif)$", url_path_only))
     _is_direct_vid = bool(re.search(r"\.(mp4|webm|mkv|avi|mov|flv)$", url_path_only))
-
-    # Also check booru CDN domains — these are always direct downloads
-    _is_booru_cdn = any(d in url for d in [
+    _is_booru_cdn  = any(d in url for d in [
         "rule34.xxx/images","us.rule34.xxx","wimg.rule34.xxx",
-        "img2.gelbooru.com","img3.gelbooru.com",
-        "cdn.donmai.us","files.yande.re","konachan.com/data",
-        "img.xbooru.com","xbooru.com/images",
-        "safebooru.org/images","wallhaven.cc/full",
+        "img2.gelbooru.com","img3.gelbooru.com","cdn.donmai.us",
+        "files.yande.re","konachan.com/data","img.xbooru.com",
+        "xbooru.com/images","safebooru.org/images","wallhaven.cc/full",
         "img.rule34.paheal.net","wixmp.com",
     ])
-
     if _is_direct_img or _is_direct_vid or _is_booru_cdn:
-        fname = filename or url.split("/")[-1].split("?")[0].rsplit(".",1)[0] or "media"
-        _direct(url, fname, dl_id); return
-
+        _direct(url, safe_name(fname), dl_id); return
     if "deviantart.com" in url:
-        active_downloads[dl_id]["status"] = "fetching"
-        fname = filename or safe_name(url.split("/")[-1]) or "da-media"
-
-        # ── Attempt 1: yt-dlp (handles auth natively) ──
         try:
             _ydlp(url, quality, fmt, fname, audio_only, no_wm, dl_id)
-            if active_downloads[dl_id].get("status") == "done":
-                return
-        except Exception: pass
-
-        # ── Attempt 2: get_da_media_url (fetches fresh token every time) ──
-        active_downloads[dl_id].update({"status":"fetching","error":None})
-        media_url, media_type = get_da_media_url(url)  # always fresh
+            if active_downloads[dl_id].get("status") == "done": return
+        except: pass
+        media_url, media_type = get_da_media_url(url)
         if media_url:
-            if media_type == "video":
-                _ydlp(media_url, quality, fmt, fname, audio_only, no_wm, dl_id)
-            else:
-                _direct(media_url, fname, dl_id)
-            if active_downloads[dl_id].get("status") == "done":
-                return
-
-        # ── Attempt 3: yt-dlp on media_url directly ──
-        if media_url:
-            active_downloads[dl_id].update({"status":"fetching","error":None})
-            try:
-                _ydlp(media_url, quality, fmt, fname, audio_only, no_wm, dl_id)
-                if active_downloads[dl_id].get("status") == "done":
-                    return
-            except Exception: pass
-
-        # ── All attempts failed ──
-        err = active_downloads[dl_id].get("error") or "Could not extract media from DeviantArt"
-        active_downloads[dl_id].update({"status":"error","error":err})
+            if media_type == "video": _ydlp(media_url, quality, fmt, fname, audio_only, no_wm, dl_id)
+            else: _direct(media_url, fname, dl_id)
+            if active_downloads[dl_id].get("status") == "done": return
+        active_downloads[dl_id].update({"status":"error","error":"DeviantArt extraction failed"})
         return
-
-    if "artstation.com" in url:
-        try:
-            r2 = req.get(url, headers=HEADERS, timeout=15)
-            og = re.search(r'<meta property="og:image"\s+content="([^"]+)"', r2.text)
-            if og: _direct(og.group(1).replace("&amp;","&"), filename or "artstation", dl_id); return
-        except Exception: pass
-        active_downloads[dl_id].update({"status":"error","error":"Could not find image"}); return
-
-    if is_direct_image(url) or is_direct_video(url):
-        _direct(url, filename or url.split("/")[-1].split("?")[0].rsplit(".",1)[0], dl_id); return
-
     _ydlp(url, quality, fmt, filename, audio_only, no_wm, dl_id)
 
 
@@ -1259,7 +1262,7 @@ def _direct(url, fname, dl_id):
 
         # Step 7: Validate final file
         fsize = out.stat().st_size
-        min_size = 50_000 if is_video else 1_024   # 50KB min for video, 1KB for image
+        min_size = 4_096 if is_video else 512   # 4KB min for video, 512B for image
         if fsize < min_size:
             # Read first bytes to check if it's an error page
             with open(out,"rb") as f: head_bytes = f.read(64)
@@ -1526,23 +1529,10 @@ def _auto_download_item(item):
             url = resolved
             item = dict(item); item["url"] = url  # update item too
 
-    # For video genres: light size check using unblock engine headers
-    if item.get("mode") == "video" and item.get("direct"):
-        try:
-            h = {"User-Agent": HEADERS["User-Agent"], "Referer": f"https://{urlparse(url).netloc}/"}
-            head = req.head(url, headers=h, timeout=10, allow_redirects=True)
-            size = int(head.headers.get("content-length", 0))
-            # Only skip if we KNOW it's tiny — if head fails, still try download
-            if size > 0 and size < 500_000:  # < 500KB = definitely too short
-                active_downloads[dl_id].update({"status":"error","error":"Video too short, skipped"})
-                return False, None, "too short"
-        except Exception:
-            pass  # HEAD failed — proceed with download anyway
-
-    # For image genres: reject obvious video URLs
+    # Only reject video URLs in image-only genres (no size gate — kills too many valid videos)
     if item.get("mode") == "image":
-        if any(url.lower().endswith(x) for x in [".mp4",".webm",".mov"]):
-            active_downloads[dl_id].update({"status":"error","error":"Wrong type, skipped"})
+        if any(url.lower().split("?")[0].endswith(x) for x in [".mp4",".webm",".mov",".flv"]):
+            active_downloads[dl_id].update({"status":"error","error":"Wrong type (video in image genre), skipped"})
             return False, None, "wrong type"
 
     _do_download(url, "max", "mp4", fname, False, True, dl_id)
