@@ -24,6 +24,38 @@ DOWNLOAD_DIR.mkdir(exist_ok=True)
 active_downloads = {}
 download_history = []
 
+# ── TELEGRAM — defined here so ALL routes below can reference them ────────────
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID",   "").strip()
+TG_MAX_FILE_MB     = 50
+_tg_queue          = []
+_tg_lock           = threading.Lock()
+_tg_enabled        = False
+_tg_thread         = None
+_TG_DB_FILE        = Path("/tmp/mediavault_tg_db.json")
+_tg_db: list       = []
+_tg_channels       = {}
+_tg_active_channel = "default"
+
+def _get_active_tg():
+    """Return (token, chat_id) for the active channel."""
+    if _tg_active_channel in _tg_channels:
+        ch = _tg_channels[_tg_active_channel]
+        return ch.get("token",""), ch.get("chat_id","")
+    return TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+
+def tg_enabled():
+    token, chat_id = _get_active_tg()
+    return bool(token and chat_id)
+
+def _ensure_tg_worker():
+    global _tg_thread
+    if _tg_thread is None and tg_enabled():
+        _tg_thread = threading.Thread(target=_tg_worker, daemon=True)
+        _tg_thread.start()
+
+print(f"[TG] Token: {(TELEGRAM_BOT_TOKEN[:10]+'...') if TELEGRAM_BOT_TOKEN else 'NOT SET'} | Chat ID: {TELEGRAM_CHAT_ID or 'NOT SET'}")
+
 SUPPORTED_SITES = [
     {"name": "DeviantArt",  "url": "deviantart.com",  "icon": "🎨", "types": "Art, Wallpapers, Photos, Videos"},
     {"name": "YouTube",     "url": "youtube.com",     "icon": "▶️", "types": "Videos, Shorts, Playlists, Audio"},
@@ -1299,8 +1331,6 @@ def auto_set_delay():
 #  The db is rebuilt by fetching history from the TG channel on startup
 # ══════════════════════════════════════════════════════════════════════════════
 
-_TG_DB_FILE = Path("/tmp/mediavault_tg_db.json")
-_tg_db: list = []  # in-memory list of {file_id, type, name, size, caption, timestamp}
 
 def _tg_db_load():
     global _tg_db
@@ -1405,15 +1435,6 @@ def set_sources():
 # ── TELEGRAM CHANNEL SELECTOR API ─────────────────────────────────────────────
 # Allows switching which Telegram channel to send files to at runtime
 
-_tg_channels = {}  # name -> {token, chat_id}
-_tg_active_channel = "default"
-
-def _get_active_tg():
-    """Return (token, chat_id) for the active channel."""
-    if _tg_active_channel in _tg_channels:
-        ch = _tg_channels[_tg_active_channel]
-        return ch.get("token",""), ch.get("chat_id","")
-    return TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 
 @app.route("/api/telegram/channels", methods=["GET"])
 def tg_get_channels():
@@ -1472,19 +1493,8 @@ def tg_delete_channel():
 #  Setup: set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in Railway env vars.
 # ══════════════════════════════════════════════════════════════════════════════
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID",   "").strip()
 print(f"[TG] Token: {(TELEGRAM_BOT_TOKEN[:10]+'...') if TELEGRAM_BOT_TOKEN else 'NOT SET'} | Chat ID: {TELEGRAM_CHAT_ID or 'NOT SET'}")
-TG_MAX_FILE_MB     = 50   # Telegram bot API limit per file
 
-_tg_queue   = []          # files waiting to be uploaded
-_tg_lock    = threading.Lock()
-_tg_enabled = False
-
-
-def tg_enabled():
-    token, chat_id = _get_active_tg()
-    return bool(token and chat_id)
 
 
 def _tg_send_file(filepath, caption=""):
@@ -1619,15 +1629,6 @@ def tg_queue_file(filepath, genre="", title="", author="", tag=""):
 
 
 # Start Telegram worker thread only if token is configured
-_tg_thread = None
-def _ensure_tg_worker():
-    global _tg_thread
-    if _tg_thread is None and tg_enabled():
-        _tg_thread = threading.Thread(target=_tg_worker, daemon=True)
-        _tg_thread.start()
-
-
-# ── Hook into auto-downloader: queue every completed file ─────────────────────
 def _tg_hook_direct(url, fname, dl_id):
     """Wrapper around _direct that queues file for Telegram after download."""
     _direct(url, fname, dl_id)
