@@ -272,7 +272,7 @@ def _try_ytdlp(url: str, dest_dir: Path, filename: str, progress_cb, quality: st
         "noplaylist":          True,
         "ignoreerrors":        False,
         # ── Bypass ALL restrictions ──────────────────────────────────────
-        "age_limit":           None,           # disable age limit
+        "age_limit":           99,             # 99 = allow all ages
         "geo_bypass":          True,
         "geo_bypass_country":  "US",
         "nocheckcertificate":  True,
@@ -298,12 +298,31 @@ def _try_ytdlp(url: str, dest_dir: Path, filename: str, progress_cb, quality: st
             info = ydl.extract_info(url)
             fname = ydl.prepare_filename(info)
             # Find the actual output file (extension may differ)
-            for ext in (".mp4",".mkv",".webm",".mp3",".m4a",".jpg",".png",".gif"):
+            # Primary: check with_suffix variants
+            for ext in (".mp4",".mkv",".webm",".mp3",".m4a",".jpg",".png",".gif",".flv",".ts"):
                 candidate = Path(fname).with_suffix(ext)
                 if candidate.exists():
                     results["path"] = str(candidate); break
+
+            # Fallback: glob the dest_dir for any file created in last 30s
+            if not results["path"]:
+                import glob, time as _time
+                now = _time.time()
+                pattern = str(dest_dir / "*")
+                candidates = [
+                    f for f in glob.glob(pattern)
+                    if os.path.isfile(f)
+                    and not f.endswith(".part")
+                    and not f.endswith(".ytdl")
+                    and (_time.time() - os.path.getmtime(f)) < 60
+                ]
+                if candidates:
+                    results["path"] = max(candidates, key=os.path.getmtime)
+
+            # Last resort: the raw fname itself
             if not results["path"] and os.path.exists(fname):
                 results["path"] = fname
+
             if results["path"]:
                 return True, results["path"], ""
             return False, "", "yt-dlp finished but output file not found"
@@ -321,19 +340,26 @@ def _scrape_page_media(url: str) -> Optional[str]:
     try:
         h = _headers(url)
         h["Accept"] = "text/html,application/xhtml+xml,*/*;q=0.9"
-        r = requests.get(url, headers=h, timeout=20)
-        if r.status_code != 200: return None
+        r = requests.get(url, headers=h, timeout=30)
+        if r.status_code not in (200, 206): return None
         html = r.text
 
         domain = urlparse(url).netloc
 
-        # Priority 1: og:video (full video URL)
-        for pat in [
-            r'<meta[^>]+property=["\']og:video["\'][^>]+content=["\']([^"\']+)["\']',
-            r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:video["\']',
-        ]:
-            m = re.search(pat, html, re.I)
-            if m: return m.group(1).replace("&amp;","&")
+        # Priority 1: og:video:secure_url / og:video:url (direct MP4 links)
+        # Note: og:video itself often points to Flash/embed player, NOT the direct file
+        # og:video:url and og:video:secure_url are the actual direct MP4/WebM links
+        for prop in ("og:video:secure_url", "og:video:url", "og:video"):
+            for pat in [
+                rf'<meta[^>]+property=["\'\']{re.escape(prop)}["\'\'][^>]+content=["\'\']([^"\'\' ]+)["\'\']>',
+                rf'<meta[^>]+content=["\'\']([^"\'\' ]+)["\'\'][^>]+property=["\'\']{re.escape(prop)}["\'\']>',
+            ]:
+                m = re.search(pat, html, re.I)
+                if m:
+                    v = m.group(1).replace("&amp;","&")
+                    # Skip embed/iframe player URLs — we want direct file URLs
+                    if not any(skip in v for skip in ("/embed/","/player/","/watch?",".swf","iframe")):
+                        return v
 
         # Priority 2: video source tags
         for pat in [
@@ -456,10 +482,13 @@ def _try_api_probe(url: str) -> Optional[str]:
 #  STRATEGY 7 — UA cycle (try each browser identity)
 # ═════════════════════════════════════════════════════════════════════════════
 def _try_ua_cycle(url: str, dest: Path, progress_cb):
+    url_lc3 = url.lower().split("?")[0]
+    is_vid3  = any(url_lc3.endswith(x) for x in (".mp4",".webm",".mkv",".mov",".flv"))
+    ua_timeout = (30, None) if is_vid3 else (20, 120)
     for ua in _UA_POOL:
         try:
             h = _headers(url, ua=ua)
-            r = requests.get(url, headers=h, timeout=120, stream=True, allow_redirects=True)
+            r = requests.get(url, headers=h, timeout=ua_timeout, stream=True, allow_redirects=True)
             if r.status_code in (200, 206):
                 result, err = _stream_to_file(r, dest, progress_cb)
                 if result: return result, err
@@ -474,11 +503,14 @@ def _try_cffi(url: str, dest: Path, progress_cb):
     if not CFFI_AVAILABLE:
         return None, "curl_cffi not installed"
     try:
+        url_lc = url.lower().split("?")[0]
+        is_vid = any(url_lc.endswith(x) for x in (".mp4",".webm",".mkv",".mov",".flv"))
+        cffi_timeout = (30, None) if is_vid else (20, 120)
         r = cffi_req.get(
             url,
             headers=_headers(url),
             impersonate="chrome124",
-            timeout=300,
+            timeout=cffi_timeout,
             stream=True,
             allow_redirects=True,
         )
@@ -510,8 +542,11 @@ def _try_proxy_direct(url: str, dest: Path, progress_cb):
         return None, "no proxy configured"
     try:
         proxies = {"http": _PROXY, "https": _PROXY}
+        url_lc2 = url.lower().split("?")[0]
+        is_vid2 = any(url_lc2.endswith(x) for x in (".mp4",".webm",".mkv",".mov",".flv"))
+        proxy_timeout = (30, None) if is_vid2 else (20, 120)
         r = requests.get(url, headers=_headers(url), proxies=proxies,
-                         timeout=300, stream=True, allow_redirects=True)
+                         timeout=proxy_timeout, stream=True, allow_redirects=True)
         if r.status_code in (200, 206):
             return _stream_to_file(r, dest, progress_cb)
     except Exception as e:
@@ -600,7 +635,7 @@ def _resolve_wrapper(url: str) -> str:
         img = qs.get("img",[None])[0]
         if img:
             prefix = img[:4]
-            cdn = f"https://img.xbooru.com//images/{prefix}/{img}"
+            cdn = f"https://img.xbooru.com/images/{prefix}/{img}"
             return cdn
 
     # Any redirect.php, hotlink.php, proxy.php
@@ -723,7 +758,9 @@ def download(
     media_url = _try_api_probe(url)
     if media_url:
         ext = _ext(media_url)
-        if not ext: ext = ".jpg"
+        if not ext:
+            url_lc_b = media_url.lower().split("?")[0]
+            ext = ".mp4" if any(url_lc_b.endswith(x) for x in (".mp4",".webm",".mkv",".flv")) else ".jpg"
         dest = dest_dir / f"{fname_base}{ext}"
         c = 1
         while dest.exists(): dest = dest_dir / f"{fname_base}_{c}{ext}"; c += 1
@@ -735,7 +772,9 @@ def download(
     media_url = _scrape_page_media(url)
     if media_url:
         ext = _ext(media_url)
-        if not ext: ext = ".jpg"
+        if not ext:
+            url_lc_b2 = media_url.lower().split("?")[0]
+            ext = ".mp4" if any(url_lc_b2.endswith(x) for x in (".mp4",".webm",".mkv",".flv")) else ".jpg"
         dest = dest_dir / f"{fname_base}{ext}"
         c = 1
         while dest.exists(): dest = dest_dir / f"{fname_base}_{c}{ext}"; c += 1
@@ -747,7 +786,9 @@ def download(
     media_url = _scrape_next_data(url)
     if media_url:
         ext = _ext(media_url)
-        if not ext: ext = ".jpg"
+        if not ext:
+            url_lc_b3 = media_url.lower().split("?")[0]
+            ext = ".mp4" if any(url_lc_b3.endswith(x) for x in (".mp4",".webm",".mkv",".flv")) else ".jpg"
         dest = dest_dir / f"{fname_base}{ext}"
         c = 1
         while dest.exists(): dest = dest_dir / f"{fname_base}_{c}{ext}"; c += 1
