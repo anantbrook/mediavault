@@ -16,8 +16,8 @@ import threading
 import subprocess
 from pathlib import Path
 from typing import Callable, Optional
-from modules.bypass_cloudflare import download_with_bypass, get_session
-from modules.cookie_manager import get_cookies
+from bypass_cloudflare import download_with_bypass, get_session
+from cookie_manager import get_cookies
 
 DOWNLOAD_DIR = Path("/tmp/mediavault_downloads")
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)

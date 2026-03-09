@@ -1,7 +1,7 @@
 [phases.install]
 cmds = [
   "python3 -m venv /app/venv",
-  "/app/venv/bin/pip install flask yt-dlp requests pillow gunicorn"
+  "/app/venv/bin/pip install flask yt-dlp requests pillow gunicorn flask-cors beautifulsoup4 lxml curl-cffi"
 ]
 
 [start]

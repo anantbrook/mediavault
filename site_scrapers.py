@@ -11,8 +11,8 @@ import time
 import random
 import requests
 from typing import Optional
-from modules.bypass_cloudflare import get_session, make_headers
-from modules.cookie_manager import get_cookies
+from bypass_cloudflare import get_session, make_headers
+from cookie_manager import get_cookies
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  PIXIV
