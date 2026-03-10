@@ -563,17 +563,86 @@ def get_da_media_url(page_url):
     def _decode_wixmp(raw):
         return raw.replace("\u002F","/").replace("\\/","/").replace("&amp;","&")
 
-    # ── Strategy 1: Eclipse API — returns original full-res URL with fresh token ──
+    # ── Strategy 0: extended_fetch API — best for videos, returns src directly ──
+    slug_match = re.search(r"-(\d+)$", page_url.rstrip("/"))
+    dev_id = slug_match.group(1) if slug_match else None
+
+    if dev_id:
+        # Extract username from URL for better API results
+        _user_match = re.search(r"deviantart\.com/([^/]+)/art/", page_url)
+        _username = _user_match.group(1) if _user_match else ""
+
+        extended_endpoints = [
+            # extended_fetch with type=video — best for video deviations
+            f"https://www.deviantart.com/_napi/shared_api/deviation/extended_fetch?deviationid={dev_id}&username={_username}&type=video&include_session=false",
+            f"https://www.deviantart.com/_napi/shared_api/deviation/extended_fetch?deviationid={dev_id}&username={_username}&type=art&include_session=false",
+            f"https://www.deviantart.com/_napi/da-browse/api/networkbar/deviation/{dev_id}",
+            f"https://www.deviantart.com/_napi/shared_api/deviation/fetch?deviationid={dev_id}",
+        ]
+        for ep in extended_endpoints:
+            try:
+                api_r = req.get(ep, headers=da_headers, timeout=15)
+                if api_r.status_code == 200:
+                    raw = api_r.text
+                    # Find any wixmp video URL in the response
+                    vid_matches = re.findall(
+                        r"https://[^\s\"'<>]+wixmp[^\s\"'<>]+\.mp4[^\s\"'<>]*",
+                        raw.replace("\\u002F","/").replace("\\/","/")
+                    )
+                    if vid_matches:
+                        best_vid = max(vid_matches, key=len)
+                        print(f"[DA] extended_fetch video: {best_vid[:80]}")
+                        return best_vid, "video"
+
+                    # Parse JSON for token + baseUri
+                    try:
+                        d = api_r.json()
+                        dev = d.get("deviation", d)  # some endpoints wrap in deviation{}
+
+                        # Path 1: videoPreviews (DA's standard video structure)
+                        vp = dev.get("videoPreviews") or d.get("videoPreviews") or []
+                        if isinstance(vp, list) and vp:
+                            for preview in vp:
+                                srcs = preview.get("sources",[]) if isinstance(preview,dict) else []
+                                if srcs:
+                                    best = max(srcs, key=lambda s: s.get("width",0) if isinstance(s,dict) else 0)
+                                    src = best.get("src","") if isinstance(best,dict) else ""
+                                    if src:
+                                        print(f"[DA] videoPreviews src: {src[:80]}")
+                                        return _decode_wixmp(src), "video"
+
+                        # Path 2: media.baseUri + token
+                        media = dev.get("media",{})
+                        base  = media.get("baseUri","")
+                        tokens= media.get("token",[""])
+                        tok   = tokens[0] if isinstance(tokens,list) and tokens else ""
+                        if base and any(x in base for x in (".mp4",".webm",".flv")):
+                            full = f"{_decode_wixmp(base)}?token={tok}" if tok else _decode_wixmp(base)
+                            return full, "video"
+
+                        # Path 3: videos array
+                        vids = dev.get("videos",[]) or d.get("videos",[])
+                        if vids:
+                            src = vids[0].get("src","") if isinstance(vids[0],dict) else str(vids[0])
+                            if src: return _decode_wixmp(src), "video"
+
+                        # Path 4: deep scan entire response for any wixmp mp4
+                        all_text = api_r.text.replace("\u002F", "/").replace("\\/", "/")
+                        mp4s = re.findall(r"https://[^\s\"'<>]+wixmp[^\s\"'<>]+\.mp4[^\s\"'<>]*", all_text)
+                        if mp4s:
+                            return max(mp4s, key=len), "video"
+                    except Exception as ep:
+                        print(f"[DA] JSON parse: {ep}")
+            except Exception as e:
+                print(f"[DA] extended_fetch {ep[:50]}: {e}")
+
+    # ── Strategy 1: Eclipse networkbar API ───────────────────────────────────
     try:
-        # Extract deviation ID from URL slug
-        slug_match = re.search(r"-(\d+)$", page_url.rstrip("/"))
-        if slug_match:
-            dev_id = slug_match.group(1)
+        if dev_id:
             api_url = f"https://www.deviantart.com/_napi/da-browse/api/networkbar/deviation/{dev_id}"
             api_r = req.get(api_url, headers=da_headers, timeout=12)
             if api_r.status_code == 200:
                 d = api_r.json()
-                # Try all media fields
                 for path in [
                     ["deviation","media","baseUri"],
                     ["deviation","media","prettyName"],
@@ -587,9 +656,9 @@ def get_da_media_url(page_url):
                             token_list = d.get("deviation",{}).get("media",{}).get("token",[""])
                             tok = token_list[0] if token_list else ""
                             full = f"{v}?token={tok}" if tok else v
-                            if _is_alive(full):
-                                mtype = "video" if any(x in full for x in [".mp4",".webm",".flv"]) else "image"
-                                return full, mtype
+                            # Don't _is_alive check — token expires during HEAD request
+                            mtype = "video" if any(x in full for x in [".mp4",".webm",".flv"]) else "image"
+                            return full, mtype
                     except (KeyError, IndexError, TypeError):
                         pass
     except Exception as e:
@@ -629,17 +698,18 @@ def get_da_media_url(page_url):
         r = req.get(page_url, headers=da_headers, timeout=20)
         html = r.text
 
-        # 3a: Direct video src pattern in HTML
+        # 3a: Direct video src pattern in HTML — no _is_alive (token expires during HEAD)
         for vpat in [
             r'"src"\s*:\s*"(https://wixmp[^"]+\.mp4[^"]*)"',
             r'"src"\s*:\s*"(https://wixmp[^"]+\.webm[^"]*)"',
             r'<source[^>]+src="([^"]+\.(?:mp4|webm)[^"]*)"',
+            r'https://[^\s"\'<>]+wixmp[^\s"\'<>]+\.mp4[^\s"\'<>]*',
         ]:
             vm = re.search(vpat, html)
             if vm:
-                raw = _decode_wixmp(vm.group(1))
-                if _is_alive(raw):
-                    return raw, "video"
+                raw = _decode_wixmp(vm.group(1) if vm.lastindex else vm.group(0))
+                print(f"[DA] 3a video found: {raw[:80]}")
+                return raw, "video"
 
         # 3b: Parse __NEXT_DATA__ JSON for all media fields
         nd = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.DOTALL)
@@ -649,13 +719,37 @@ def get_da_media_url(page_url):
 
                 # Video: look in all media/video keys
                 def find_video(obj, depth=0):
-                    if depth > 20: return None
+                    if depth > 30: return None
                     if isinstance(obj, dict):
-                        for k in ("src","videoSrc","video_src","mp4","webm","src_mp4"):
+                        # ── Priority paths for DA video structure ──────────
+                        # 1. videoPreviews[].sources[].src  (highest quality)
+                        vp = obj.get("videoPreviews", [])
+                        if isinstance(vp, list) and vp:
+                            for preview in vp:
+                                srcs = preview.get("sources",[]) if isinstance(preview,dict) else []
+                                if isinstance(srcs, list) and srcs:
+                                    best = max(srcs, key=lambda s: s.get("width",0) if isinstance(s,dict) else 0)
+                                    url_v = best.get("src","") if isinstance(best,dict) else ""
+                                    if url_v: return _decode_wixmp(url_v)
+                        # 2. videos[].src
+                        vids = obj.get("videos", [])
+                        if isinstance(vids, list) and vids:
+                            v0 = vids[0]
+                            src = (v0.get("src","") or v0.get("url","")) if isinstance(v0,dict) else str(v0)
+                            if src and src.startswith("http"): return _decode_wixmp(src)
+                        # 3. media.baseUri with token
+                        media = obj.get("media", {})
+                        if isinstance(media, dict):
+                            base = media.get("baseUri","")
+                            if base and any(x in base for x in (".mp4",".webm",".flv")):
+                                toks = media.get("token",[""])
+                                tok = toks[0] if isinstance(toks,list) and toks else ""
+                                return f"{_decode_wixmp(base)}?token={tok}" if tok else _decode_wixmp(base)
+                        # 4. Any key with video URL
+                        for k in ("src","videoSrc","video_src","mp4","webm","src_mp4","downloadUrl","download_url","fileUrl","file_url"):
                             v = obj.get(k,"")
-                            if isinstance(v, str) and v.startswith("http") and any(x in v for x in [".mp4",".webm"]):
-                                decoded = _decode_wixmp(v)
-                                if _is_alive(decoded): return decoded
+                            if isinstance(v, str) and v.startswith("http") and any(x in v.lower() for x in (".mp4",".webm",".flv","video")):
+                                return _decode_wixmp(v)
                         for v in obj.values():
                             r2 = find_video(v, depth+1)
                             if r2: return r2
@@ -1163,7 +1257,8 @@ def _direct(url, fname, dl_id):
         }
 
         # Step 3: Download with retry — NO Range header to avoid partial/corrupt files
-        timeout = 300 if is_video else 60   # 5 min for video, 1 min for images
+        # (connect_timeout, read_timeout) — never cut off video mid-stream
+        timeout = (30, None) if is_video else (20, 90)
         r = None
         last_err = ""
         ua_pool = [
@@ -1217,6 +1312,34 @@ def _direct(url, fname, dl_id):
 
         # Step 5: Determine file extension from content-type + URL
         ct = r.headers.get("content-type","").split(";")[0].strip().lower()
+
+        # Immediate reject if server returns HTML — blocked/redirect page
+        if ct in ("text/html", "text/plain", "application/json"):
+            # Could be a block page, captcha, or redirect — try unblock engine
+            if UNBLOCK_AVAILABLE:
+                print(f"[DIRECT] Content-type={ct} — retrying with unblock engine")
+                r2 = _ub.get_response(url)
+                if r2 and r2.status_code in (200, 206):
+                    ct = r2.headers.get("content-type","").split(";")[0].strip().lower()
+                    if ct not in ("text/html", "text/plain"):
+                        r = r2  # use unblocked response
+                    else:
+                        active_downloads[dl_id].update({"status":"error","error":f"Site blocked — returned {ct} instead of media"})
+                        return
+                else:
+                    active_downloads[dl_id].update({"status":"error","error":f"Site blocked — returned {ct} even after bypass"})
+                    return
+            else:
+                active_downloads[dl_id].update({"status":"error","error":f"Site blocked — returned {ct} instead of media (no unblock engine)"})
+                return
+
+        # Re-check is_video using ACTUAL content-type from server response
+        # (URL may have no extension — CDN video URLs often look like image URLs)
+        if "video/" in ct or ct in ("application/octet-stream",):
+            is_video = True   # server says it's video — trust that
+        elif "image/" in ct:
+            is_video = False  # server says it's image — trust that
+
         ext_map = {
             "image/jpeg": ".jpg", "image/jpg": ".jpg",
             "image/png": ".png", "image/gif": ".gif",
@@ -1224,15 +1347,27 @@ def _direct(url, fname, dl_id):
             "image/bmp": ".bmp", "image/tiff": ".tiff",
             "video/mp4": ".mp4", "video/webm": ".webm",
             "video/x-matroska": ".mkv", "video/quicktime": ".mov",
-            "application/octet-stream": ".mp4" if is_video else ".jpg",
+            "application/octet-stream": ".mp4",  # always mp4 for binary — safest
         }
         ext = ext_map.get(ct, "")
+
+        # If no ext from CT, try URL path
         if not ext:
             m = re.search(r"\.(jpg|jpeg|png|gif|webp|avif|mp4|webm|mkv|mov|flv)(\?|$)", url_path)
-            ext = "." + m.group(1) if m else (".mp4" if is_video else ".jpg")
+            ext = "." + m.group(1) if m else ""
+
+        # If STILL no ext — check magic bytes from Content-Range or just use type
+        if not ext:
+            ext = ".mp4" if is_video else ".jpg"
+
         if ext == ".jpeg": ext = ".jpg"
 
         # Step 6: Write to file
+        # CRITICAL: if is_video is True, NEVER save as image extension
+        # This catches CDN URLs that return video/mp4 but URL had no extension
+        if is_video and ext in (".jpg",".jpeg",".png",".webp",".avif",".bmp",".gif"):
+            ext = ".mp4"
+
         out = DOWNLOAD_DIR / f"{safe_name(fname)}{ext}"
         c = 1
         while out.exists():
@@ -1242,22 +1377,33 @@ def _direct(url, fname, dl_id):
         done = 0
 
         with open(out, "wb") as f:
-            for chunk in r.iter_content(chunk_size=524288):  # 512KB chunks
+            for chunk in r.iter_content(chunk_size=1048576):  # 1MB chunks
                 if not chunk: continue
-                # Sanity check: first chunk should start with image/video magic bytes
-                if done == 0 and len(chunk) >= 4:
-                    magic = chunk[:4]
-                    is_html = chunk[:15].lower().startswith((b"<!doc", b"<html", b"<head"))
-                    if is_html:
-                        active_downloads[dl_id].update({"status":"error","error":"Site returned HTML error page instead of media file"})
+
+                # First chunk: check magic bytes BEFORE writing anything
+                if done == 0:
+                    sniff = chunk[:32].lstrip()
+                    # Reject HTML error pages
+                    if sniff[:5].lower() in (b"<!doc", b"<html") or sniff[:6].lower() in (b"<head>", b"<body>"):
                         out.unlink(missing_ok=True)
+                        active_downloads[dl_id].update({"status":"error","error":"Site returned HTML error page — likely blocked or login required"})
                         return
+                    # Validate magic bytes match expected type
+                    if is_video:
+                        # MP4 magic: ftyp at offset 4, or starts with 0000
+                        # WebM magic: 0x1A 0x45 0xDF 0xA3
+                        # GIF magic: GIF8
+                        # If first bytes look like text/HTML reject
+                        if sniff[:1] in (b"<", b"{"): 
+                            out.unlink(missing_ok=True)
+                            active_downloads[dl_id].update({"status":"error","error":"CDN returned non-video data (text/JSON) for video URL"})
+                            return
+
                 f.write(chunk)
                 done += len(chunk)
                 if total:
                     active_downloads[dl_id]["progress"] = max(2, min(95, int(done / total * 100)))
                 elif done > 0:
-                    # Unknown size — show KB downloaded
                     active_downloads[dl_id].update({"progress": min(90, done // 50000), "speed": f"{done//1024}KB"})
 
         # Step 7: Validate final file

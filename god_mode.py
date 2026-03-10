@@ -611,7 +611,9 @@ def _ext(url: str, ct: str = "") -> str:
         "image/jpeg":".jpg","image/jpg":".jpg","image/png":".png",
         "image/gif":".gif","image/webp":".webp","image/avif":".avif",
         "video/mp4":".mp4","video/webm":".webm","video/quicktime":".mov",
-        "video/x-matroska":".mkv","application/octet-stream":".bin",
+        "video/x-matroska":".mkv",
+        # octet-stream = raw binary, caller decides based on context
+        # (don't map here — let the caller use URL/context to decide)
     }
     if ct in ct_map: return ct_map[ct]
     m = re.search(r"\.(jpg|jpeg|png|gif|webp|avif|mp4|webm|mkv|mov|flv|avi)(\?|$)", url.lower())
@@ -700,20 +702,31 @@ def download(
         # Determine extension — check URL and content-type
         ext = _ext(url)
         url_lc = url.lower().split("?")[0]
+        real_ct = ""
         if not ext:
-            # Try HEAD request to get content-type before allocating path
+            # HEAD request to get real Content-Type from server
             try:
                 hd = requests.head(url, headers=_headers(url), timeout=10, allow_redirects=True)
-                ext = _ext(url, hd.headers.get("content-type",""))
+                real_ct = hd.headers.get("content-type","").split(";")[0].strip().lower()
+                ext = _ext(url, real_ct)
             except: pass
         if not ext:
-            # Guess from URL context
-            if any(x in url_lc for x in ("/video","/mp4","/webm","video=","type=video")):
+            # Use Content-Type to decide
+            if real_ct.startswith("video/"):
                 ext = ".mp4"
-            elif any(url_lc.endswith(x) for x in (".mp4",".webm",".gif",".mkv")):
+            elif real_ct == "application/octet-stream":
+                # Binary blob — check if URL hints at video
+                ext = ".mp4" if any(x in url_lc for x in ("/video","/mp4","/webm","animated")) else ".jpg"
+            elif real_ct.startswith("image/"):
+                ext = ".jpg"
+            elif any(url_lc.endswith(x) for x in (".mp4",".webm",".gif",".mkv",".flv")):
                 ext = "." + url_lc.rsplit(".",1)[-1]
             else:
-                ext = ".jpg"   # image fallback
+                ext = ".jpg"   # final fallback
+
+        # CRITICAL: if actual response is video, never save as image
+        if real_ct.startswith("video/") and ext in (".jpg",".jpeg",".png",".webp",".gif"):
+            ext = ".mp4"
         dest = dest_dir / f"{fname_base}{ext}"
         c = 1
         while dest.exists(): dest = dest_dir / f"{fname_base}_{c}{ext}"; c += 1
