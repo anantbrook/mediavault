@@ -192,6 +192,14 @@ def _try_direct(url: str, dest: Path, progress_cb, timeout: int = 300):
             r = sess.get(url, headers=h, timeout=req_timeout,
                          stream=True, allow_redirects=True)
             if r.status_code in (200, 206):
+                # Check if server says video but our dest has image extension — fix it
+                resp_ct = r.headers.get("content-type","").split(";")[0].strip().lower()
+                if resp_ct.startswith("video/") and dest.suffix.lower() in (".jpg",".jpeg",".png",".webp",".avif"):
+                    ct_ext = {"video/mp4":".mp4","video/webm":".webm","video/quicktime":".mov"}.get(resp_ct,".mp4")
+                    new_dest = dest.with_suffix(ct_ext)
+                    c = 1
+                    while new_dest.exists(): new_dest = dest.parent / f"{dest.stem}_{c}{ct_ext}"; c += 1
+                    dest = new_dest
                 return _stream_to_file(r, dest, progress_cb)
             last_err = f"HTTP {r.status_code}"
         except requests.exceptions.ConnectionError as e:
@@ -558,11 +566,26 @@ def _try_proxy_direct(url: str, dest: Path, progress_cb):
 #  Shared: stream response to file
 # ─────────────────────────────────────────────────────────────────────────────
 def _stream_to_file(r, dest: Path, progress_cb) -> tuple[Optional[Path], str]:
-    """Stream response to file. Handles videos of any size."""
+    """Stream response to file. Handles videos of any size. Auto-corrects extension from Content-Type."""
     total = int(r.headers.get("content-length", 0))
     done  = 0
     dest.parent.mkdir(parents=True, exist_ok=True)
     first_chunk = True
+
+    # Detect video from response Content-Type BEFORE writing
+    resp_ct = r.headers.get("content-type","").split(";")[0].strip().lower()
+    is_video_resp = resp_ct.startswith("video/") or resp_ct == "application/octet-stream"
+
+    # If server says video but dest is named .jpg/.png — fix the filename NOW
+    if is_video_resp and dest.suffix.lower() in (".jpg",".jpeg",".png",".webp",".avif",".bmp"):
+        # Map content-type to correct extension
+        ct_ext_map = {"video/mp4":".mp4","video/webm":".webm","video/quicktime":".mov","video/x-matroska":".mkv"}
+        correct_ext = ct_ext_map.get(resp_ct, ".mp4")
+        new_dest = dest.with_suffix(correct_ext)
+        c = 1
+        while new_dest.exists(): new_dest = dest.parent / f"{dest.stem}_{c}{correct_ext}"; c += 1
+        dest = new_dest
+        print(f"[GOD] ⚠️  Corrected extension: {dest.name} (server sent {resp_ct})")
 
     try:
         with open(dest, "wb") as f:
@@ -585,6 +608,25 @@ def _stream_to_file(r, dest: Path, progress_cb) -> tuple[Optional[Path], str]:
                                 return None, f"API error: {err_data.get('error', err_data.get('message',''))}"
                         except:
                             pass
+                    # Re-check: if first chunk looks like video binary (not HTML/JSON) but ext is wrong
+                    if not is_video_resp:
+                        # Check magic bytes for common video formats
+                        magic = chunk[:12]
+                        is_mp4_magic = (
+                            magic[4:8] in (b"ftyp", b"moov", b"mdat", b"free") or
+                            magic[:4] in (b"\x00\x00\x00\x18", b"\x00\x00\x00\x20")
+                        )
+                        is_webm_magic = magic[:4] == b"\x1a\x45\xdf\xa3"
+                        if (is_mp4_magic or is_webm_magic) and dest.suffix.lower() in (".jpg",".jpeg",".png",".webp"):
+                            correct_ext = ".mp4" if is_mp4_magic else ".webm"
+                            f.close() if not f.closed else None
+                            dest.unlink(missing_ok=True)
+                            new_dest = dest.with_suffix(correct_ext)
+                            c = 1
+                            while new_dest.exists(): new_dest = dest.parent / f"{dest.stem}_{c}{correct_ext}"; c += 1
+                            dest = new_dest
+                            print(f"[GOD] ⚠️  Magic byte correction: {dest.name}")
+                            f = open(dest, "wb")
                 f.write(chunk)
                 done += len(chunk)
                 if progress_cb:
@@ -611,13 +653,22 @@ def _ext(url: str, ct: str = "") -> str:
         "image/jpeg":".jpg","image/jpg":".jpg","image/png":".png",
         "image/gif":".gif","image/webp":".webp","image/avif":".avif",
         "video/mp4":".mp4","video/webm":".webm","video/quicktime":".mov",
-        "video/x-matroska":".mkv",
-        # octet-stream = raw binary, caller decides based on context
-        # (don't map here — let the caller use URL/context to decide)
+        "video/x-matroska":".mkv","video/x-flv":".flv","video/avi":".avi",
+        # application/octet-stream = raw binary from CDN — almost always video
+        "application/octet-stream": ".mp4",
     }
     if ct in ct_map: return ct_map[ct]
     m = re.search(r"\.(jpg|jpeg|png|gif|webp|avif|mp4|webm|mkv|mov|flv|avi)(\?|$)", url.lower())
     return ("." + m.group(1)) if m else ""
+
+
+def _is_video_url(url: str, ct: str = "") -> bool:
+    """Return True if URL/content-type indicates this is a video file."""
+    ct = ct.split(";")[0].strip().lower()
+    if ct.startswith("video/"): return True
+    if ct == "application/octet-stream": return True  # CDN binary = almost always video
+    url_lc = url.lower().split("?")[0]
+    return any(url_lc.endswith(x) for x in (".mp4",".webm",".mkv",".mov",".flv",".avi",".ts",".m4v"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -699,34 +750,56 @@ def download(
     # PATH A: Direct media URL (booru CDN, wixmp, direct image/video)
     # ─────────────────────────────────────────────────────────────────────────
     if is_direct or is_booru_cdn:
-        # Determine extension — check URL and content-type
+        # Determine extension — check URL first, then Content-Type from server
         ext = _ext(url)
         url_lc = url.lower().split("?")[0]
         real_ct = ""
+
+        # Known video CDN patterns — skip HEAD, just use .mp4
+        _VIDEO_CDN_HINTS = (
+            "/images/", "/data/", "/files/", "/video/", "/mp4/",
+            "animated", "mmd", "3d_animation",
+        )
+        _BOORU_VIDEO_DOMAINS = (
+            "us.rule34.xxx", "wimg.rule34.xxx",
+            "img2.gelbooru.com", "img3.gelbooru.com",
+            "img.xbooru.com", "files.yande.re",
+            "konachan.com/data", "cdn.donmai.us",
+            "static1.e621.net",
+        )
+
         if not ext:
-            # HEAD request to get real Content-Type from server
-            try:
-                hd = requests.head(url, headers=_headers(url), timeout=10, allow_redirects=True)
-                real_ct = hd.headers.get("content-type","").split(";")[0].strip().lower()
-                ext = _ext(url, real_ct)
-            except: pass
+            # Only do HEAD if not a known booru CDN (many block HEAD → wrong result)
+            skip_head = any(d in url for d in _BOORU_VIDEO_DOMAINS)
+            if not skip_head:
+                try:
+                    hd = requests.head(url, headers=_headers(url), timeout=10, allow_redirects=True)
+                    real_ct = hd.headers.get("content-type","").split(";")[0].strip().lower()
+                    ext = _ext(url, real_ct)
+                except: pass
+
         if not ext:
-            # Use Content-Type to decide
             if real_ct.startswith("video/"):
                 ext = ".mp4"
             elif real_ct == "application/octet-stream":
-                # Binary blob — check if URL hints at video
-                ext = ".mp4" if any(x in url_lc for x in ("/video","/mp4","/webm","animated")) else ".jpg"
+                # Octet-stream on a booru CDN = video
+                ext = ".mp4"
             elif real_ct.startswith("image/"):
                 ext = ".jpg"
             elif any(url_lc.endswith(x) for x in (".mp4",".webm",".gif",".mkv",".flv")):
                 ext = "." + url_lc.rsplit(".",1)[-1]
+            elif is_booru_cdn and any(hint in url_lc for hint in _VIDEO_CDN_HINTS):
+                # Booru CDN URL with no extension and no content-type hint
+                # Check if the API already told us this is video via the URL pattern
+                # Default to .jpg but we'll re-check after first chunk via content-type
+                ext = ".jpg"  # will be corrected by _stream_to_file content-type check
             else:
                 ext = ".jpg"   # final fallback
 
-        # CRITICAL: if actual response is video, never save as image
+        # CRITICAL: if actual response is video, never save as image extension
         if real_ct.startswith("video/") and ext in (".jpg",".jpeg",".png",".webp",".gif"):
             ext = ".mp4"
+
         dest = dest_dir / f"{fname_base}{ext}"
         c = 1
         while dest.exists(): dest = dest_dir / f"{fname_base}_{c}{ext}"; c += 1
@@ -772,8 +845,7 @@ def download(
     if media_url:
         ext = _ext(media_url)
         if not ext:
-            url_lc_b = media_url.lower().split("?")[0]
-            ext = ".mp4" if any(url_lc_b.endswith(x) for x in (".mp4",".webm",".mkv",".flv")) else ".jpg"
+            ext = ".mp4" if _is_video_url(media_url) else ".jpg"
         dest = dest_dir / f"{fname_base}{ext}"
         c = 1
         while dest.exists(): dest = dest_dir / f"{fname_base}_{c}{ext}"; c += 1
@@ -786,8 +858,7 @@ def download(
     if media_url:
         ext = _ext(media_url)
         if not ext:
-            url_lc_b2 = media_url.lower().split("?")[0]
-            ext = ".mp4" if any(url_lc_b2.endswith(x) for x in (".mp4",".webm",".mkv",".flv")) else ".jpg"
+            ext = ".mp4" if _is_video_url(media_url) else ".jpg"
         dest = dest_dir / f"{fname_base}{ext}"
         c = 1
         while dest.exists(): dest = dest_dir / f"{fname_base}_{c}{ext}"; c += 1
@@ -800,8 +871,7 @@ def download(
     if media_url:
         ext = _ext(media_url)
         if not ext:
-            url_lc_b3 = media_url.lower().split("?")[0]
-            ext = ".mp4" if any(url_lc_b3.endswith(x) for x in (".mp4",".webm",".mkv",".flv")) else ".jpg"
+            ext = ".mp4" if _is_video_url(media_url) else ".jpg"
         dest = dest_dir / f"{fname_base}{ext}"
         c = 1
         while dest.exists(): dest = dest_dir / f"{fname_base}_{c}{ext}"; c += 1

@@ -1429,7 +1429,8 @@ def _direct(url, fname, dl_id):
             "image/bmp": ".bmp", "image/tiff": ".tiff",
             "video/mp4": ".mp4", "video/webm": ".webm",
             "video/x-matroska": ".mkv", "video/quicktime": ".mov",
-            "application/octet-stream": ".mp4",  # always mp4 for binary — safest
+            "video/x-flv": ".flv",
+            "application/octet-stream": ".mp4",  # CDN raw binary = almost always video/mp4
         }
         ext = ext_map.get(ct, "")
 
