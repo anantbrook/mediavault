@@ -686,9 +686,8 @@ def get_da_media_url(page_url):
             for url in candidates:
                 if url and url.startswith("http") and not url.endswith(".html"):
                     url = _clean_wixmp(url)
-                    if _is_alive(url):
-                        mtype = "video" if any(x in url for x in [".mp4",".webm"]) else "image"
-                        return url, mtype
+                    mtype = "video" if any(x in url for x in [".mp4",".webm"]) else "image"
+                    return url, mtype
     except Exception as e:
         print(f"[DA] oEmbed: {e}")
 
@@ -697,6 +696,17 @@ def get_da_media_url(page_url):
     try:
         r = req.get(page_url, headers=da_headers, timeout=20)
         html = r.text
+
+        # Detect paywall / subscription wall early
+        if r.status_code == 403:
+            print(f"[DA] 403 — page requires login/subscription")
+            return None, "login_required"
+        if "Log in to view" in html or "log-in-wall" in html or "loginwall" in html.lower():
+            print(f"[DA] Login wall detected — content requires DA account")
+            return None, "login_required"
+        if "subscription" in html.lower() and "premium" in html.lower() and "Log In" in html:
+            print(f"[DA] Premium/subscription content — requires paid tier")
+            return None, "premium_required"
 
         # 3a: Direct video src pattern in HTML — no _is_alive (token expires during HEAD)
         for vpat in [
@@ -774,7 +784,7 @@ def get_da_media_url(page_url):
                             if isinstance(v,str) and v.startswith("http") and any(x in v.lower() for x in [".jpg",".jpeg",".png",".webp",".gif",".avif"]):
                                 if score > best["score"]:
                                     best = {"score":score,"url":_clean_wixmp(_decode_wixmp(v))}
-                        if best["url"] and _is_alive(best["url"]):
+                        if best["url"]:
                             return best["url"]
                         for v in obj.values():
                             r2 = find_image(v, depth+1)
@@ -800,14 +810,14 @@ def get_da_media_url(page_url):
         og = re.search(r'<meta property="og:image"\s+content="([^"]+)"', html)
         if og:
             img = _clean_wixmp(og.group(1).replace("&amp;","&"))
-            if _is_alive(img):
+            if img:
                 return img, "image"
 
         # Strategy 5: Any wixmp image URL in page HTML
         wix = re.findall(r"(https://[^\s\"'<>]*wixmp[^\s\"'<>]*\.(?:jpg|png|webp|gif)[^\s\"'<>]*)", html)
         for w in wix[:5]:
             w2 = _clean_wixmp(_decode_wixmp(w))
-            if _is_alive(w2):
+            if w2:
                 return w2, "image"
 
     return None, None
@@ -1182,16 +1192,88 @@ def _do_download(url, quality, fmt, filename, audio_only, no_wm, dl_id):
     if _is_direct_img or _is_direct_vid or _is_booru_cdn:
         _direct(url, safe_name(fname), dl_id); return
     if "deviantart.com" in url:
+        # ── Step A: Try yt-dlp first (fastest when it works) ──────────────
         try:
             _ydlp(url, quality, fmt, fname, audio_only, no_wm, dl_id)
-            if active_downloads[dl_id].get("status") == "done": return
-        except: pass
+            if active_downloads[dl_id].get("status") == "done":
+                return
+        except Exception:
+            pass
+
+        # ── Step B: yt-dlp failed — reset status and use DA extractor ─────
+        active_downloads[dl_id].update({"status": "fetching", "error": None})
+        print(f"[DA] yt-dlp failed, trying DA extractor for: {url[:60]}")
+
         media_url, media_type = get_da_media_url(url)
+
+        # Handle paywall/login
+        if media_type in ("login_required", "premium_required"):
+            active_downloads[dl_id].update({
+                "status": "error",
+                "error": "❌ This DeviantArt post requires a paid subscription or login. Cannot download without credentials."
+            })
+            return
+
         if media_url:
-            if media_type == "video": _ydlp(media_url, quality, fmt, fname, audio_only, no_wm, dl_id)
-            else: _direct(media_url, fname, dl_id)
-            if active_downloads[dl_id].get("status") == "done": return
-        active_downloads[dl_id].update({"status":"error","error":"DeviantArt extraction failed"})
+            print(f"[DA] Extracted: type={media_type} url={media_url[:80]}")
+            if media_type == "video":
+                # Try god_mode directly on the video CDN URL
+                if GOD_MODE:
+                    ok, fpath, err = _gm.download(
+                        url=media_url, dest_dir=DOWNLOAD_DIR,
+                        dl_id=dl_id, progress_cb=lambda d,t: active_downloads[dl_id].update(
+                            {"progress": max(2, min(95, int(d/t*100))) if t else 0, "status": "downloading"}
+                        ),
+                        filename=safe_name(fname), quality=quality or "best",
+                    )
+                    if ok and fpath and os.path.exists(fpath):
+                        fsize = os.path.getsize(fpath)
+                        active_downloads[dl_id].update({
+                            "progress": 100, "status": "done",
+                            "filename": os.path.basename(fpath),
+                            "filepath": fpath, "filesize": fsize,
+                        })
+                        download_history.insert(0, {
+                            "id": dl_id, "title": os.path.splitext(os.path.basename(fpath))[0],
+                            "url": url, "filename": os.path.basename(fpath),
+                            "extractor": "DeviantArt", "filesize": fsize, "thumbnail": "",
+                        })
+                        return
+                # Fallback to _ydlp on the direct URL
+                _ydlp(media_url, quality, fmt, fname, audio_only, no_wm, dl_id)
+            else:
+                _direct(media_url, safe_name(fname), dl_id)
+
+            if active_downloads[dl_id].get("status") == "done":
+                return
+
+        # ── Step C: god_mode on the original DA page URL ───────────────────
+        if GOD_MODE:
+            ok, fpath, err = _gm.download(
+                url=url, dest_dir=DOWNLOAD_DIR, dl_id=dl_id,
+                progress_cb=lambda d,t: active_downloads[dl_id].update(
+                    {"progress": max(2, min(95, int(d/t*100))) if t else 0, "status": "downloading"}
+                ),
+                filename=safe_name(fname), quality=quality or "best",
+            )
+            if ok and fpath and os.path.exists(fpath):
+                fsize = os.path.getsize(fpath)
+                active_downloads[dl_id].update({
+                    "progress": 100, "status": "done",
+                    "filename": os.path.basename(fpath),
+                    "filepath": fpath, "filesize": fsize,
+                })
+                download_history.insert(0, {
+                    "id": dl_id, "title": os.path.splitext(os.path.basename(fpath))[0],
+                    "url": url, "filename": os.path.basename(fpath),
+                    "extractor": "DeviantArt", "filesize": fsize, "thumbnail": "",
+                })
+                return
+
+        active_downloads[dl_id].update({
+            "status": "error",
+            "error": "DeviantArt: Could not extract video. Post may require a paid subscription."
+        })
         return
     _ydlp(url, quality, fmt, filename, audio_only, no_wm, dl_id)
 
@@ -1449,9 +1531,35 @@ def _ydlp(url, quality, fmt, filename, audio_only, no_wm, dl_id):
     out_tmpl = str(DOWNLOAD_DIR / (f"{safe_name(filename)}.%(ext)s" if filename else "%(title)s.%(ext)s"))
     fmt_str  = "bestaudio/best" if audio_only else QUALITY_MAP.get(quality, QUALITY_MAP["max"])
     if no_wm and "tiktok" in url.lower(): fmt_str = "download_addr-0"
+    # Per-site header/cookie injection
+    extra_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    extra_cookies = ""
+    if "deviantart.com" in url.lower():
+        extra_headers["Referer"] = "https://www.deviantart.com/"
+        extra_cookies = "agegate_state=1; userinfo=mature_content_filter%3D0; da_is_logged_in=0"
+    elif "reddit.com" in url.lower():
+        extra_cookies = "over18=1"
+    elif "gelbooru.com" in url.lower():
+        extra_cookies = "fringeBenefits=yup"
+
     opts = {"format":fmt_str,"outtmpl":out_tmpl,"progress_hooks":[hook],"quiet":True,"no_warnings":True,
             "merge_output_format": fmt if fmt in ("mp4","mkv","webm") else "mp4",
-            "postprocessors":[],"writethumbnail":False,"noplaylist":True}
+            "postprocessors":[],"writethumbnail":False,"noplaylist":True,
+            "age_limit": 99,
+            "geo_bypass": True,
+            "nocheckcertificate": True,
+            "socket_timeout": 120,
+            "retries": 5,
+            "fragment_retries": 10,
+            "http_chunk_size": 10485760,
+            "concurrent_fragment_downloads": 4,
+            "http_headers": extra_headers,
+        }
+    if extra_cookies:
+        opts["http_headers"]["Cookie"] = extra_cookies
     if audio_only: opts["postprocessors"].append({"key":"FFmpegExtractAudio","preferredcodec":"mp3","preferredquality":"320"})
     if not YT_DLP_AVAILABLE:
         active_downloads[dl_id].update({"status":"error","error":"yt_dlp not installed on server"}); return
@@ -1467,12 +1575,17 @@ def _ydlp(url, quality, fmt, filename, audio_only, no_wm, dl_id):
             download_history.insert(0,{"id":dl_id,"title":info.get("title",""),"url":url,"filename":os.path.basename(fname),
                                         "extractor":info.get("extractor_key",""),"filesize":fsize,"thumbnail":info.get("thumbnail","")})
     except Exception as e:
-        # og:image fallback
+        err_str = str(e)
+        # For DA — don't fall back to og:image, let _do_download run get_da_media_url
+        if "deviantart.com" in url.lower():
+            active_downloads[dl_id].update({"status":"error","error":f"yt-dlp: {err_str}"})
+            return
+        # For other sites — og:image fallback
         try:
             r2 = req.get(url, headers=HEADERS, timeout=15)
             og = re.search(r'<meta property="og:image"\s+content="([^"]+)"', r2.text)
             if og: _direct(og.group(1).replace("&amp;","&"), filename or "media", dl_id)
-            else:  active_downloads[dl_id].update({"status":"error","error":str(e)})
+            else:  active_downloads[dl_id].update({"status":"error","error":err_str})
         except Exception as e2:
             active_downloads[dl_id].update({"status":"error","error":str(e2)})
 
