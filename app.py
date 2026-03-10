@@ -1,8 +1,14 @@
-import os, sys, json, threading, webbrowser, time, re, uuid, random
+import os, sys, json, threading, webbrowser, time, re, uuid, random, ast, html as html_lib
 from pathlib import Path
 from urllib.parse import urlparse, quote
 from flask import Flask, render_template, request, jsonify, send_file, Response, stream_with_context
 import requests as req
+try:
+    from curl_cffi import requests as cffi_req
+    CURL_CFFI_AVAILABLE = True
+except ImportError:
+    cffi_req = None
+    CURL_CFFI_AVAILABLE = False
 
 # ── Custom unblock engine (7-strategy waterfall) ─────────────────────────────
 try:
@@ -149,6 +155,11 @@ def is_direct_video(url):
     return bool(re.search(r'\.(mp4|webm|mkv|avi|mov|flv)(\?.*)?$', url.lower()))
 
 
+def _use_browser_cookies(url):
+    if _is_cloud:
+        return False
+    domain = urlparse(url).netloc.lower()
+    return "deviantart.com" in domain
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -470,11 +481,11 @@ def _scrape_da_tag_UNUSED(tag, mature=False):
         headers["Cookie"] = "agegate_state=1; userinfo=mature_content_filter%3D0"
     try:
         r = req.get(url, headers=headers, timeout=15)
-        html = r.text
+        page_html = r.text
         results = []
 
         # Try __NEXT_DATA__ JSON
-        nd = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.DOTALL)
+        nd = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', page_html, re.DOTALL)
         if nd:
             try:
                 data = json.loads(nd.group(1))
@@ -563,9 +574,77 @@ def get_da_media_url(page_url):
     def _decode_wixmp(raw):
         return raw.replace("\u002F","/").replace("\\/","/").replace("&amp;","&")
 
-    # ── Strategy 0: extended_fetch API — best for videos, returns src directly ──
+    def _cffi_get(url, timeout=20):
+        if not CURL_CFFI_AVAILABLE:
+            return None
+        try:
+            return cffi_req.get(
+                url,
+                headers=da_headers,
+                impersonate="chrome124",
+                timeout=timeout,
+            )
+        except Exception as e:
+            print(f"[DA] curl_cffi {url[:60]}: {e}")
+            return None
+
+    def _extract_embed_video(page_html, deviation_id):
+        if not deviation_id:
+            return None
+        try:
+            state_match = re.search(
+                r'window\.__INITIAL_STATE__\s*=\s*JSON\.parse\("((?:\\.|[^"\\])*)"\)',
+                page_html,
+            )
+            if not state_match:
+                return None
+            state = json.loads(ast.literal_eval('"' + state_match.group(1) + '"'))
+            entities = state.get("@@entities", {})
+            ext = (entities.get("deviationExtended", {}) or {}).get(str(deviation_id), {})
+            embed_code = ext.get("embedCode", "")
+            iframe = re.search(r"src=['\"]([^'\"]+/embed/film/[^'\"]+)['\"]", embed_code or "")
+            embed_url = iframe.group(1).replace("&amp;", "&") if iframe else ""
+            if not embed_url:
+                deviation = (entities.get("deviation", {}) or {}).get(str(deviation_id), {})
+                if deviation.get("type") == "film" or deviation.get("isVideo"):
+                    embed_url = f"https://backend.deviantart.com/embed/film/{deviation_id}/1/"
+            if not embed_url:
+                return None
+            embed_resp = _cffi_get(embed_url, timeout=20)
+            if not embed_resp or embed_resp.status_code != 200:
+                return None
+            sources_match = re.search(r'gmon-sources="([^"]+)"', embed_resp.text)
+            if not sources_match:
+                return None
+            sources = json.loads(html_lib.unescape(sources_match.group(1)))
+            best_url = ""
+            best_score = -1
+            for meta in sources.values():
+                if not isinstance(meta, dict):
+                    continue
+                src = meta.get("src", "")
+                if not src.startswith("http"):
+                    continue
+                score = int(meta.get("width", 0) or 0) * int(meta.get("height", 0) or 0)
+                if score >= best_score:
+                    best_score = score
+                    best_url = src
+            return best_url or None
+        except Exception as e:
+            print(f"[DA] embed video extract: {e}")
+            return None
+
+    # ── Strategy 0: curl_cffi page + embed scrape — bypasses DA 403 on film pages ──
     slug_match = re.search(r"-(\d+)$", page_url.rstrip("/"))
     dev_id = slug_match.group(1) if slug_match else None
+
+    if dev_id and CURL_CFFI_AVAILABLE:
+        page_resp = _cffi_get(page_url, timeout=20)
+        if page_resp and page_resp.status_code == 200:
+            embed_video = _extract_embed_video(page_resp.text, dev_id)
+            if embed_video:
+                print(f"[DA] embed video: {embed_video[:80]}")
+                return embed_video, "video"
 
     if dev_id:
         # Extract username from URL for better API results
@@ -684,7 +763,8 @@ def get_da_media_url(page_url):
             if src_match:
                 candidates.insert(0, src_match.group(1))
             for url in candidates:
-                if url and url.startswith("http") and not url.endswith(".html"):
+                is_media = bool(re.search(r'\.(mp4|webm|mov|mkv|jpg|jpeg|png|webp)(\?|$)', url, re.I)) or "wixmp" in url
+                if url and url.startswith("http") and is_media:
                     url = _clean_wixmp(url)
                     mtype = "video" if any(x in url for x in [".mp4",".webm"]) else "image"
                     return url, mtype
@@ -692,19 +772,19 @@ def get_da_media_url(page_url):
         print(f"[DA] oEmbed: {e}")
 
     # ── Strategy 3: Scrape __NEXT_DATA__ — full page JSON contains all media ──
-    html = ""
+    page_html = ""
     try:
         r = req.get(page_url, headers=da_headers, timeout=20)
-        html = r.text
+        page_html = r.text
 
         # Detect paywall / subscription wall early
         if r.status_code == 403:
             print(f"[DA] 403 — page requires login/subscription")
             return None, "login_required"
-        if "Log in to view" in html or "log-in-wall" in html or "loginwall" in html.lower():
+        if "Log in to view" in page_html or "log-in-wall" in page_html or "loginwall" in page_html.lower():
             print(f"[DA] Login wall detected — content requires DA account")
             return None, "login_required"
-        if "subscription" in html.lower() and "premium" in html.lower() and "Log In" in html:
+        if "subscription" in page_html.lower() and "premium" in page_html.lower() and "Log In" in page_html:
             print(f"[DA] Premium/subscription content — requires paid tier")
             return None, "premium_required"
 
@@ -715,14 +795,14 @@ def get_da_media_url(page_url):
             r'<source[^>]+src="([^"]+\.(?:mp4|webm)[^"]*)"',
             r'https://[^\s"\'<>]+wixmp[^\s"\'<>]+\.mp4[^\s"\'<>]*',
         ]:
-            vm = re.search(vpat, html)
+            vm = re.search(vpat, page_html)
             if vm:
                 raw = _decode_wixmp(vm.group(1) if vm.lastindex else vm.group(0))
                 print(f"[DA] 3a video found: {raw[:80]}")
                 return raw, "video"
 
         # 3b: Parse __NEXT_DATA__ JSON for all media fields
-        nd = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.DOTALL)
+        nd = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', page_html, re.DOTALL)
         if nd:
             try:
                 data = json.loads(nd.group(1))
@@ -806,15 +886,15 @@ def get_da_media_url(page_url):
         print(f"[DA] Page scrape: {e}")
 
     # ── Strategy 4: og:image — always fresh, strip resize for full-res ──
-    if html:
-        og = re.search(r'<meta property="og:image"\s+content="([^"]+)"', html)
+    if page_html:
+        og = re.search(r'<meta property="og:image"\s+content="([^"]+)"', page_html)
         if og:
             img = _clean_wixmp(og.group(1).replace("&amp;","&"))
             if img:
                 return img, "image"
 
         # Strategy 5: Any wixmp image URL in page HTML
-        wix = re.findall(r"(https://[^\s\"'<>]*wixmp[^\s\"'<>]*\.(?:jpg|png|webp|gif)[^\s\"'<>]*)", html)
+        wix = re.findall(r"(https://[^\s\"'<>]*wixmp[^\s\"'<>]*\.(?:jpg|png|webp|gif)[^\s\"'<>]*)", page_html)
         for w in wix[:5]:
             w2 = _clean_wixmp(_decode_wixmp(w))
             if w2:
@@ -1149,6 +1229,7 @@ def _do_download(url, quality, fmt, filename, audio_only, no_wm, dl_id):
         active_downloads[dl_id]["status"] = "downloading"
 
     fname = filename or url.split("/")[-1].split("?")[0].rsplit(".",1)[0] or "media"
+    god_mode_error = ""
 
     if GOD_MODE:
         # ── USE GOD MODE ENGINE ────────────────────────────────────────────
@@ -1175,8 +1256,9 @@ def _do_download(url, quality, fmt, filename, audio_only, no_wm, dl_id):
             })
             return
         # God mode failed — store error
-        active_downloads[dl_id].update({"status": "error", "error": err or "God mode failed"})
-        return
+        god_mode_error = err or "God mode failed"
+        active_downloads[dl_id].update({"status": "fetching", "error": None})
+        print(f"[GOD MODE] Fallback to legacy downloader for {url[:80]}: {god_mode_error}")
 
     # ── FALLBACK: legacy path (if god_mode.py missing) ────────────────────
     url_path_only = url.lower().split("?")[0]
@@ -1276,6 +1358,8 @@ def _do_download(url, quality, fmt, filename, audio_only, no_wm, dl_id):
         })
         return
     _ydlp(url, quality, fmt, filename, audio_only, no_wm, dl_id)
+    if active_downloads[dl_id].get("status") != "done" and god_mode_error and not active_downloads[dl_id].get("error"):
+        active_downloads[dl_id].update({"status": "error", "error": god_mode_error})
 
 
 def _direct(url, fname, dl_id):
@@ -1546,6 +1630,8 @@ def _ydlp(url, quality, fmt, filename, audio_only, no_wm, dl_id):
     elif "gelbooru.com" in url.lower():
         extra_cookies = "fringeBenefits=yup"
 
+    use_browser_cookies = _use_browser_cookies(url)
+
     opts = {"format":fmt_str,"outtmpl":out_tmpl,"progress_hooks":[hook],"quiet":True,"no_warnings":True,
             "merge_output_format": fmt if fmt in ("mp4","mkv","webm") else "mp4",
             "postprocessors":[],"writethumbnail":False,"noplaylist":True,
@@ -1559,7 +1645,9 @@ def _ydlp(url, quality, fmt, filename, audio_only, no_wm, dl_id):
             "concurrent_fragment_downloads": 4,
             "http_headers": extra_headers,
         }
-    if extra_cookies:
+    if use_browser_cookies:
+        opts["cookiesfrombrowser"] = ("chrome",)
+    elif extra_cookies:
         opts["http_headers"]["Cookie"] = extra_cookies
     if audio_only: opts["postprocessors"].append({"key":"FFmpegExtractAudio","preferredcodec":"mp3","preferredquality":"320"})
     if not YT_DLP_AVAILABLE:
@@ -2384,4 +2472,12 @@ if __name__ == "__main__":
 #  Continuously downloads anime wallpapers, live wallpapers, mature art,
 #  18+ videos, and any genre at max quality — runs forever in background
 # ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
 

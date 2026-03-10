@@ -164,6 +164,13 @@ def _headers(url: str, ua: str = None) -> dict:
     return h
 
 
+def _use_browser_cookies(url: str) -> bool:
+    if os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("DYNO"):
+        return False
+    domain = urlparse(url).netloc.lower()
+    return "deviantart.com" in domain
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 #  STRATEGY 1 — Smart direct download
 # ═════════════════════════════════════════════════════════════════════════════
@@ -298,6 +305,8 @@ def _try_ytdlp(url: str, dest_dir: Path, filename: str, progress_cb, quality: st
             "Accept-Language": "en-US,en;q=0.9",
         },
     }
+    if _use_browser_cookies(url):
+        opts["cookiesfrombrowser"] = ("chrome",)
     if _PROXY:
         opts["proxy"] = _PROXY
 
@@ -919,3 +928,4 @@ def inject_cookies(domain: str, cookies: dict):
     sess = _session(domain)
     for k, v in cookies.items():
         sess.cookies.set(k, v, domain=domain)
+

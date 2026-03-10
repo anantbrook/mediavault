@@ -9,12 +9,15 @@ Usage:
 It tries 6 methods in order until one works.
 """
 
-import sys, re, json, os, time, requests
+import sys, re, json, os, time, requests, ast, html as html_lib
 from pathlib import Path
 from urllib.parse import quote
-
+try:
+    from curl_cffi import requests as cffi_requests
+except ImportError:
+    cffi_requests = None
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-COOKIES = "agegate_state=1; userinfo=mature_content_filter%3D0; cf_clearance=x"
+COOKIES = "agegate_state=1; userinfo=mature_content_filter%3D0"
 
 HEADERS = {
     "User-Agent": UA,
@@ -68,7 +71,8 @@ def method2_oembed(url):
             d = r.json()
             for k in ("url","media_url","video_url"):
                 v = d.get(k,"")
-                if v and v.startswith("http") and not v.endswith(".html"):
+                is_media = bool(re.search(r'\.(mp4|webm|mov|mkv|jpg|jpeg|png|webp)(\?|$)', v, re.I)) or "wixmp" in v
+                if v and v.startswith("http") and is_media:
                     log(f"  Found via oEmbed: {v[:80]}")
                     return v
     except Exception as e:
@@ -79,11 +83,63 @@ def method3_page_scrape(url):
     """Scrape the page HTML directly"""
     log("Method 3: Page HTML scrape")
     try:
+        page_html = ""
         r = requests.get(url, headers=HEADERS, timeout=20)
-        if r.status_code != 200:
+        if r.status_code == 200:
+            page_html = r.text
+        elif cffi_requests:
+            log(f"  Page returned {r.status_code} via requests - trying browser impersonation")
+            r2 = cffi_requests.get(url, headers=HEADERS, impersonate="chrome124", timeout=20)
+            if r2.status_code == 200:
+                page_html = r2.text
+            else:
+                log(f"  Browser impersonation returned {r2.status_code}")
+                return None
+        else:
             log(f"  Page returned {r.status_code}")
             return None
-        html = r.text
+
+        dev_id = get_deviation_id(url)
+        if cffi_requests and dev_id:
+            try:
+                state_match = re.search(
+                    r'window\.__INITIAL_STATE__\s*=\s*JSON\.parse\("((?:\\.|[^"\\])*)"\)',
+                    page_html,
+                )
+                if state_match:
+                    state = json.loads(ast.literal_eval('"' + state_match.group(1) + '"'))
+                    entities = state.get("@@entities", {})
+                    ext = (entities.get("deviationExtended", {}) or {}).get(str(dev_id), {})
+                    embed = ext.get("embedCode", "")
+                    iframe = re.search(r"src=['\"]([^'\"]+/embed/film/[^'\"]+)['\"]", embed or "")
+                    embed_url = iframe.group(1).replace("&amp;", "&") if iframe else ""
+                    if not embed_url:
+                        deviation = (entities.get("deviation", {}) or {}).get(str(dev_id), {})
+                        if deviation.get("type") == "film" or deviation.get("isVideo"):
+                            embed_url = f"https://backend.deviantart.com/embed/film/{dev_id}/1/"
+                    if embed_url:
+                        er = cffi_requests.get(embed_url, headers=HEADERS, impersonate="chrome124", timeout=20)
+                        if er.status_code == 200:
+                            sm = re.search(r'gmon-sources="([^"]+)"', er.text)
+                            if sm:
+                                sources = json.loads(html_lib.unescape(sm.group(1)))
+                                best = None
+                                best_score = -1
+                                for meta in sources.values():
+                                    if not isinstance(meta, dict):
+                                        continue
+                                    src = meta.get("src", "")
+                                    if not src.startswith("http"):
+                                        continue
+                                    score = int(meta.get("width", 0) or 0) * int(meta.get("height", 0) or 0)
+                                    if score >= best_score:
+                                        best = src
+                                        best_score = score
+                                if best:
+                                    log(f"  Found via embed player: {best[:80]}")
+                                    return best
+            except Exception as e:
+                log(f"  Embed scrape failed: {e}")
 
         # Priority: find wixmp video URLs
         patterns = [
@@ -95,7 +151,7 @@ def method3_page_scrape(url):
             r'https://[^\s"\'<>]+wixmp[^\s"\'<>]+\.mp4[^\s"\'<>]*',
         ]
         for pat in patterns:
-            m = re.search(pat, html, re.I)
+            m = re.search(pat, page_html, re.I)
             if m:
                 v = m.group(1) if '(' in pat else m.group(0)
                 v = v.replace("\\u002F","/").replace("\\/","/")
@@ -103,7 +159,7 @@ def method3_page_scrape(url):
                 return v
 
         # __NEXT_DATA__ deep scan
-        nd = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.DOTALL)
+        nd = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', page_html, re.DOTALL)
         if nd:
             try:
                 data = json.loads(nd.group(1))
@@ -111,7 +167,8 @@ def method3_page_scrape(url):
                 if found:
                     log(f"  Found in __NEXT_DATA__: {found[:80]}")
                     return found
-            except: pass
+            except:
+                pass
 
     except Exception as e:
         log(f"  Page scrape failed: {e}")
@@ -151,7 +208,8 @@ def method4_ytdlp(url):
             "quiet": True,
             "no_warnings": True,
             "age_limit": 99,
-            "http_headers": {"User-Agent": UA, "Cookie": COOKIES},
+            "cookiesfrombrowser": ("chrome",),
+            "http_headers": {"User-Agent": UA, "Referer": "https://www.deviantart.com/"},
         }) as ydl:
             info = ydl.extract_info(url)
             fname = ydl.prepare_filename(info)
@@ -237,3 +295,8 @@ if __name__ == "__main__":
         print("\n❌ Could not find video URL. Try:")
         print("   pip install yt-dlp")
         print(f"   yt-dlp --cookies-from-browser chrome \"{url}\"")
+
+
+
+
+
