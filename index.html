@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MEDIA VAULT - Universal Downloader</title>
-<link href="https://fonts.googleapis.com/css2CLEARfamily=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#07090e;--surface:#0d1117;--surface2:#131921;--border:#1a2535;
@@ -237,6 +237,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <button class="nav-btn" onclick="nav('sources',this)" id="sourcesNavBtn">Sources</button>
         <button class="nav-btn" onclick="nav('tglib',this)" id="tglibNavBtn">TG Library</button>
         <button class="nav-btn" onclick="nav('stats',this)" id="statsNavBtn">Stats</button>
+  <button class="nav-btn" onclick="nav('lab',this)" id="labNavBtn">Feature Lab</button>
 
   <div class="nav-grp">PLATFORMS</div>
   <div class="site-list" id="siteChips">
@@ -283,7 +284,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="row" style="margin-bottom:12px;">
           <input class="inp" id="urlInput" placeholder="https://www.deviantart.com/...  or YouTube, Twitter, Reddit, Instagram, TikTok, Vimeo..." style="flex:1;" />
           <button class="btn btn-teal" onclick="analyze()">ANALYZE</button>
-          <button class="btn btn-ghost" onclick="clearAll()">CLEAR</button>
+          <button class="btn btn-ghost" onclick="clearAll()">RESET</button>
         </div>
         <div class="row">
           <div class="sel-wrap">
@@ -506,7 +507,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
           <div><div class="pt">📦 BATCH DOWNLOADER</div><div class="ps">Paste multiple URLs — one per line</div></div>
           <button class="btn btn-teal" onclick="runBatch()">▶ RUN ALL</button>
         </div>
-        <textarea id="batchIn" class="inp" placeholder="https://www.deviantart.com/...&#10;https://www.youtube.com/watchCLEARv=...&#10;https://twitter.com/user/status/...&#10;https://www.reddit.com/r/..." style="min-height:140px;resize:vertical;line-height:1.8;"></textarea>
+        <textarea id="batchIn" class="inp" placeholder="https://www.deviantart.com/...&#10;https://www.youtube.com/watch?v=...&#10;https://twitter.com/user/status/...&#10;https://www.reddit.com/r/..." style="min-height:140px;resize:vertical;line-height:1.8;"></textarea>
         <div class="row" style="margin-top:12px;">
           <div class="sel-wrap"><select id="batchQual"><option value="max">Max Quality</option><option value="1080">1080p</option><option value="audio">Audio Only</option></select></div>
           <div class="tog-wrap" onclick="toggle('batchWM')"><div class="tog on" id="batchWM"></div><span>No Watermark</span></div>
@@ -792,6 +793,41 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   </div>
 </div>
 
+
+<!-- FEATURE LAB SECTION -->
+<div class="sec" id="sec-lab">
+  <div class="sec-head">Feature Lab</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;">PROJECT MODULES</div>
+        <div style="font-size:10px;color:var(--text3);" id="labPackStats">Loading feature packs...</div>
+      </div>
+      <div class="row" style="gap:8px;">
+        <button class="btn btn-teal btn-sm" onclick="loadFeatureLab()">Refresh Lab</button>
+        <button class="btn btn-ghost btn-sm" onclick="runHealthCheck(true)">Run Health Check</button>
+      </div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="panel panel-teal">
+      <div class="ph"><div><div class="pt">FEATURE PACKS</div><div class="ps">Small files that describe the parts we can keep growing.</div></div></div>
+      <div id="labPackGrid" style="display:grid;grid-template-columns:1fr;gap:10px;">
+        <div style="padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text3);">Loading feature packs...</div>
+      </div>
+    </div>
+    <div class="panel panel-teal">
+      <div class="ph"><div><div class="pt">PROJECT HEALTH</div><div class="ps">Check which file has syntax damage, missing data, or encoding issues.</div></div></div>
+      <div id="healthSummaryCards" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px;">
+        <div style="padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:10px;color:var(--text3);">Waiting...</div>
+      </div>
+      <div id="healthFileList" style="display:flex;flex-direction:column;gap:8px;max-height:540px;overflow-y:auto;">
+        <div style="padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text3);">Run a health check to inspect project files.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal" style="position:relative;">
     <button class="modal-close" onclick="closeModal()">✕</button>
     <h2>🔗 SHARE LINK</h2>
@@ -828,6 +864,7 @@ let randMode        = 'art';
 let nTimer;
 let cookieGuides    = {};
 let savedCookieDomains = [];
+let featureLabData = { packs: [], health: null };
 
 // ── NAVIGATION ────────────────────────────────────────────────
 
@@ -853,7 +890,7 @@ function escapeHtml(value='') {
 }
 
 function normalizeCookieDomain(value='') {
-  return String(value).trim().toLowerCase().replace(/^httpsCLEAR:\/\//,'').replace(/^www\./,'').split('/')[0];
+  return String(value).trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').split('/')[0];
 }
 
 function renderStrategyLog(entries) {
@@ -865,8 +902,8 @@ function renderStrategyLog(entries) {
   }
   box.innerHTML = entries.map(entry => {
     const level = entry.level || 'info';
-    const color = level === 'error' CLEAR 'var(--accent2)' : (level === 'warn' CLEAR 'var(--accent4)' : 'var(--accent)');
-    const ts = entry.ts CLEAR new Date(entry.ts * 1000).toLocaleTimeString() : '--:--:--';
+    const color = level === 'error' ? 'var(--accent2)' : (level === 'warn' ? 'var(--accent4)' : 'var(--accent)');
+    const ts = entry.ts ? new Date(entry.ts * 1000).toLocaleTimeString() : '--:--:--';
     return `<div style="padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
       <div style="display:flex;justify-content:space-between;gap:10px;font-size:10px;font-family:'Space Mono',monospace;">
         <span style="color:${color};text-transform:uppercase;">${escapeHtml(level)}</span>
@@ -882,6 +919,112 @@ function resetStrategyLog() {
   renderStrategyLog([]);
 }
 
+
+function renderFeaturePacks(payload) {
+  const stats = document.getElementById('labPackStats');
+  const grid = document.getElementById('labPackGrid');
+  if (!stats || !grid) return;
+  const packs = payload.packs || [];
+  featureLabData.packs = packs;
+  stats.textContent = `${payload.count || packs.length} feature packs - ${fmtSize(payload.bytes || 0)}`;
+  if (!packs.length) {
+    grid.innerHTML = '<div style="padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text3);">No feature packs found.</div>';
+    return;
+  }
+  grid.innerHTML = packs.map(pack => {
+    const checks = (pack.checks || []).map(item => `<div style="font-size:10px;color:var(--text2);margin-top:4px;">- ${escapeHtml(item)}</div>`).join('');
+    const files = (pack.files || []).map(item => escapeHtml(item)).join(', ');
+    const future = (pack.future_additions || []).slice(0, 3).map(item => escapeHtml(item)).join(' | ');
+    return `<div style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--accent);">${escapeHtml(pack.name || pack.slug || 'Feature Pack')}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px;">${escapeHtml(pack.category || 'general')} | ${escapeHtml(pack.status || 'unknown')} | ${escapeHtml(pack.filename || '')}</div>
+        </div>
+        <div style="font-size:9px;color:var(--text3);">${fmtSize(pack.size_bytes || 0)}</div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.5;">${escapeHtml(pack.summary || '')}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:8px;">Files: ${files || '-'}</div>
+      <div style="margin-top:8px;">${checks}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:8px;">Next: ${future || '-'}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderHealthReport(report) {
+  const summary = document.getElementById('healthSummaryCards');
+  const list = document.getElementById('healthFileList');
+  if (!summary || !list) return;
+  featureLabData.health = report;
+  const counts = report.summary || {};
+  const summaryCards = [
+    ['Files', counts.total || 0, 'var(--text2)'],
+    ['OK', counts.ok || 0, 'var(--accent)'],
+    ['Warn', counts.warn || 0, 'var(--accent4)'],
+    ['Error', counts.error || 0, 'var(--accent2)'],
+  ];
+  summary.innerHTML = summaryCards.map(([label, value, color]) => `<div style="padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);">
+    <div style="font-size:16px;color:${color};font-family:'Bebas Neue',cursive;letter-spacing:2px;">${value}</div>
+    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">${label}</div>
+  </div>`).join('');
+
+  const files = (report.files || []).slice().sort((a, b) => {
+    const order = { error: 0, warn: 1, ok: 2 };
+    return (order[a.status] ?? 9) - (order[b.status] ?? 9) || a.path.localeCompare(b.path);
+  });
+  if (!files.length) {
+    list.innerHTML = '<div style="padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text3);">No health data available.</div>';
+    return;
+  }
+  list.innerHTML = files.map(file => {
+    const color = file.status === 'error' ? 'var(--accent2)' : (file.status === 'warn' ? 'var(--accent4)' : 'var(--accent)');
+    const issues = (file.issues || []).map(issue => `<div style="font-size:10px;color:${issue.severity === 'error' ? 'var(--accent2)' : 'var(--text2)'};margin-top:4px;">${escapeHtml(issue.severity.toUpperCase())}: ${escapeHtml(issue.message)}</div>`).join('');
+    return `<div style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);">${escapeHtml(file.path)}</div>
+        <div style="font-size:10px;color:${color};text-transform:uppercase;">${escapeHtml(file.status || 'unknown')}</div>
+      </div>
+      <div style="font-size:9px;color:var(--text3);margin-top:4px;">${fmtSize(file.size_bytes || 0)}${file.exists === false ? ' | missing' : ''}</div>
+      ${issues || '<div style="font-size:10px;color:var(--text3);margin-top:6px;">No issues detected.</div>'}
+    </div>`;
+  }).join('');
+}
+
+async function loadFeaturePacks() {
+  try {
+    const r = await fetch('/api/feature-packs');
+    const data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || 'Could not load feature packs');
+    renderFeaturePacks(data);
+  } catch (e) {
+    const stats = document.getElementById('labPackStats');
+    const grid = document.getElementById('labPackGrid');
+    if (stats) stats.textContent = 'Feature packs unavailable';
+    if (grid) grid.innerHTML = `<div style="padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--accent2);">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function runHealthCheck(showToast=false) {
+  try {
+    const r = await fetch('/api/health');
+    const data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error || 'Could not run health check');
+    renderHealthReport(data);
+    if (showToast) {
+      const errors = data.summary?.error || 0;
+      notify(errors ? `Health check found ${errors} error file(s)` : 'Health check passed', errors ? 'WARN' : 'OK', 4000);
+    }
+  } catch (e) {
+    const list = document.getElementById('healthFileList');
+    if (list) list.innerHTML = `<div style="padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--accent2);">${escapeHtml(e.message)}</div>`;
+    if (showToast) notify('Health check failed: ' + e.message, 'ERR', 5000);
+  }
+}
+
+async function loadFeatureLab() {
+  await Promise.all([loadFeaturePacks(), runHealthCheck(false)]);
+}
+
 // ── TOGGLE ────────────────────────────────────────────────────
 function toggle(id) { document.getElementById(id).classList.toggle('on'); }
 
@@ -891,7 +1034,7 @@ function setSiteUrl(el, site) {
   el.classList.add('on');
   const placeholders = {
     'deviantart.com': 'https://www.deviantart.com/username/art/title-123456',
-    'youtube.com': 'https://www.youtube.com/watchCLEARv=dQw4w9WgXcQ',
+    'youtube.com': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     'twitter.com': 'https://twitter.com/user/status/123456789',
     'reddit.com': 'https://www.reddit.com/r/wallpapers/comments/...',
     'instagram.com': 'https://www.instagram.com/p/...',
@@ -902,7 +1045,7 @@ function setSiteUrl(el, site) {
     'tumblr.com': 'https://username.tumblr.com/post/...',
     'artstation.com': 'https://www.artstation.com/artwork/...',
     'soundcloud.com': 'https://soundcloud.com/artist/track',
-    'facebook.com': 'https://www.facebook.com/watchCLEARv=...',
+    'facebook.com': 'https://www.facebook.com/watch?v=...',
     'twitch.tv': 'https://www.twitch.tv/videos/...',
   };
   document.getElementById('urlInput').placeholder = placeholders[site] || 'Paste URL here...';
@@ -932,18 +1075,18 @@ async function analyze() {
 
     // Populate info
     document.getElementById('mSite').textContent = data.extractor || '-';
-    document.getElementById('mType').textContent = data.typeCLEAR.toUpperCase() || '-';
-    document.getElementById('mRes').textContent = data.width && data.height CLEAR `${data.width}x${data.height}` : (data.formatsCLEAR.[0]CLEAR.quality || '-');
-    document.getElementById('mDur').textContent = data.duration CLEAR fmtDur(data.duration) : '-';
+    document.getElementById('mType').textContent = data.type?.toUpperCase() || '-';
+    document.getElementById('mRes').textContent = data.width && data.height ? `${data.width}x${data.height}` : (data.formats?.[0]?.quality || '-');
+    document.getElementById('mDur').textContent = data.duration ? fmtDur(data.duration) : '-';
     document.getElementById('mUp').textContent = data.uploader || '-';
-    document.getElementById('mViews').textContent = data.view_count CLEAR fmtNum(data.view_count) : '-';
+    document.getElementById('mViews').textContent = data.view_count ? fmtNum(data.view_count) : '-';
     document.getElementById('prevSub').textContent = data.title || '-';
     document.getElementById('fnInput').value = (data.title||'media').replace(/[^\w\- ]/g,'_').substring(0,60);
-    document.getElementById('typeTag').textContent = data.typeCLEAR.toUpperCase() || 'MEDIA';
-    document.getElementById('typeTag').className = 'tag ' + (data.type==='video'CLEAR'tag-red':'tag-teal');
+    document.getElementById('typeTag').textContent = data.type?.toUpperCase() || 'MEDIA';
+    document.getElementById('typeTag').className = 'tag ' + (data.type==='video'?'tag-red':'tag-teal');
 
     const readyMsg = data.type === 'video'
-      CLEAR 'Preview disabled. Ready to download the video source.'
+      ? 'Preview disabled. Ready to download the video source.'
       : 'Preview disabled. Ready to download the best media source.';
     document.getElementById('prevBox').innerHTML = `<div class="prev-ph"><span class="ico">DL</span>${readyMsg}</div>`;
 
@@ -1134,7 +1277,7 @@ async function fetchRandom(mode) {
     document.getElementById('rTitle').textContent  = data.title  || '—';
     document.getElementById('rAuthor').textContent = data.author || '—';
     document.getElementById('rSite').textContent   = data.source || 'DeviantArt';
-    document.getElementById('rType').textContent   = (data.is_video CLEAR '🎬 VIDEO' : '🖼 IMAGE') + (mode==='mature'CLEAR' · MATURE':'');
+    document.getElementById('rType').textContent   = (data.is_video ? '🎬 VIDEO' : '🖼 IMAGE') + (mode==='mature'?' · MATURE':'');
     document.getElementById('rTag').textContent    = '#' + (data.tag || mode);
     document.getElementById('rStatus').textContent = 'Ready to download';
 
@@ -1153,7 +1296,7 @@ async function fetchRandom(mode) {
         </div>`;
     } else if (data.thumbnail) {
       const thumbSrc = data.thumbnail
-        CLEAR `/api/thumbCLEARurl=${encodeURIComponent(data.thumbnail)}`
+        ? `/api/thumb?url=${encodeURIComponent(data.thumbnail)}`
         : null;
       if (thumbSrc) {
         box.innerHTML = `<img src="${thumbSrc}" style="max-width:100%;max-height:250px;border-radius:8px;object-fit:contain;"
@@ -1163,11 +1306,11 @@ async function fetchRandom(mode) {
       box.innerHTML = `<div class="prev-ph"><span class="ico">🖼</span>${data.title}<br><small style="color:var(--accent)">by ${data.author}</small></div>`;
     }
 
-    notify(`Found: "${data.title}" by ${data.author}`, data.is_video CLEAR '🎬' : '🎨');
+    notify(`Found: "${data.title}" by ${data.author}`, data.is_video ? '🎬' : '🎨');
 
   } catch(e) {
     clearInterval(msgIv);
-    document.getElementById('randLoadMsg').textContent = '❌ Network error — is the server runningCLEAR';
+    document.getElementById('randLoadMsg').textContent = '❌ Network error — is the server running?';
     notify('Error: ' + e.message, '❌', 5000);
   }
 }
@@ -1210,7 +1353,7 @@ async function dlRandom() {
         document.getElementById('rStatus').textContent = '❌ Failed';
         notify('Failed: ' + d.error, '❌', 6000);
       } else {
-        document.getElementById('rStatus').textContent = d.status + (d.progress CLEAR ` ${d.progress}%` : '');
+        document.getElementById('rStatus').textContent = d.status + (d.progress ? ` ${d.progress}%` : '');
       }
     }, 700);
   } catch(e) {
@@ -1324,7 +1467,7 @@ async function loadFiles() {
   const extCls = {'.mp4':'fi-mp4','.webm':'fi-mp4','.mkv':'fi-mp4','.mp3':'fi-mp3','.wav':'fi-mp3','.flac':'fi-mp3'};
   list.innerHTML = files.map(f=>`
     <div class="file-item">
-      <div class="fi-ext ${extCls[f.ext]||'fi-img'}">${f.ext.slice(1).toUpperCase()||'CLEAR'}</div>
+      <div class="fi-ext ${extCls[f.ext]||'fi-img'}">${f.ext.slice(1).toUpperCase()||'?'}</div>
       <div class="fi-name">${f.name}</div>
       <div class="fi-size">${fmtSize(f.size)}</div>
       <div style="display:flex;gap:6px;">
@@ -1335,7 +1478,7 @@ async function loadFiles() {
 }
 
 async function deleteFile(name) {
-  if(!confirm(`Delete ${name}CLEAR`)) return;
+  if(!confirm(`Delete ${name}?`)) return;
   await fetch(`/api/delete/${encodeURIComponent(name)}`, {method:'DELETE'});
   loadFiles();
   notify(`Deleted: ${name}`, '🗑');
@@ -1353,7 +1496,7 @@ async function loadHistory() {
   }
   list.innerHTML = hist.map(h=>`
     <div class="dl-item">
-      <div class="dl-thumb">${h.thumbnailCLEAR`<img src="${h.thumbnail}" onerror="this.parentElement.innerHTML='🎬'">`:'🎬'}</div>
+      <div class="dl-thumb">${h.thumbnail?`<img src="${h.thumbnail}" onerror="this.parentElement.innerHTML='🎬'">`:'🎬'}</div>
       <div class="dl-info">
         <div class="dl-name">${h.title||h.filename}</div>
         <div class="dl-meta">${h.extractor||'—'} · ${fmtSize(h.filesize||0)}</div>
@@ -1382,13 +1525,13 @@ function copyShare() { navigator.clipboard.writeText(document.getElementById('sh
 function share(platform) {
   const u = encodeURIComponent(document.getElementById('shareInput').value);
   const map = {
-    whatsapp: `https://wa.me/CLEARtext=${u}`,
-    telegram: `https://t.me/share/urlCLEARurl=${u}`,
-    twitter: `https://twitter.com/intent/tweetCLEARurl=${u}`,
-    reddit: `https://reddit.com/submitCLEARurl=${u}`,
+    whatsapp: `https://wa.me/?text=${u}`,
+    telegram: `https://t.me/share/url?url=${u}`,
+    twitter: `https://twitter.com/intent/tweet?url=${u}`,
+    reddit: `https://reddit.com/submit?url=${u}`,
     discord: null,
-    facebook: `https://www.facebook.com/sharer/sharer.phpCLEARu=${u}`,
-    email: `mailto:CLEARbody=${u}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${u}`,
+    email: `mailto:?body=${u}`,
   };
   if(platform==='discord') { navigator.clipboard.writeText(document.getElementById('shareInput').value); notify('Copied! Paste in Discord', '🎮'); return; }
   if(map[platform]) window.open(map[platform],'_blank');
@@ -1407,8 +1550,8 @@ async function openFolder() {
 
 // ── UTILS ─────────────────────────────────────────────────────
 function fmtDur(s) { const m=Math.floor(s/60),sec=s%60; return `${m}:${sec.toString().padStart(2,'0')}`; }
-function fmtNum(n) { return n>1e6CLEAR(n/1e6).toFixed(1)+'M':n>1e3CLEAR(n/1e3).toFixed(1)+'K':n; }
-function fmtSize(b) { return b>1e9CLEAR(b/1e9).toFixed(2)+' GB':b>1e6CLEAR(b/1e6).toFixed(1)+' MB':b>1e3CLEAR(b/1e3).toFixed(0)+' KB':b+' B'; }
+function fmtNum(n) { return n>1e6?(n/1e6).toFixed(1)+'M':n>1e3?(n/1e3).toFixed(1)+'K':n; }
+function fmtSize(b) { return b>1e9?(b/1e9).toFixed(2)+' GB':b>1e6?(b/1e6).toFixed(1)+' MB':b>1e3?(b/1e3).toFixed(0)+' KB':b+' B'; }
 function updateStats() {
   document.getElementById('cDl').textContent = S.dlCount;
   document.getElementById('cSize').textContent = fmtSize(S.totalBytes);
@@ -1467,8 +1610,8 @@ async function autoPause() {
   const r = await fetch('/api/auto/pause', {method:'POST'});
   const d = await r.json();
   autoPaused = d.paused;
-  document.getElementById('autoPauseBtn').textContent = autoPaused CLEAR '▶ RESUME' : '⏸ PAUSE';
-  notify(autoPaused CLEAR 'Paused' : 'Resumed', autoPaused CLEAR '⏸' : '▶', 2000);
+  document.getElementById('autoPauseBtn').textContent = autoPaused ? '▶ RESUME' : '⏸ PAUSE';
+  notify(autoPaused ? 'Paused' : 'Resumed', autoPaused ? '⏸' : '▶', 2000);
 }
 
 async function autoSetDelay(val) {
@@ -1505,12 +1648,12 @@ function renderGenreGrid() {
     const on = autoEnabled.includes(key);
     const ico = GENRE_ICONS[key] || '🎴';
     return `<div onclick="autoToggleGenre('${key}')" id="gtog_${key}"
-      style="cursor:pointer;padding:12px 14px;border-radius:10px;border:1px solid ${onCLEAR'var(--accent)':'var(--border)'};
-      background:${onCLEAR'rgba(0,245,196,.06)':'var(--bg)'};transition:all .2s;user-select:none;">
+      style="cursor:pointer;padding:12px 14px;border-radius:10px;border:1px solid ${on?'var(--accent)':'var(--border)'};
+      background:${on?'rgba(0,245,196,.06)':'var(--bg)'};transition:all .2s;user-select:none;">
       <div style="font-size:18px;margin-bottom:4px;">${ico}</div>
-      <div style="font-size:12px;font-weight:600;color:${onCLEAR'var(--accent)':'var(--text2)'};">${label}</div>
-      <div style="font-size:10px;font-family:monospace;color:${onCLEAR'var(--accent)':'var(--text3)'};margin-top:4px;">
-        ${onCLEAR'● ON':'○ OFF'}</div>
+      <div style="font-size:12px;font-weight:600;color:${on?'var(--accent)':'var(--text2)'};">${label}</div>
+      <div style="font-size:10px;font-family:monospace;color:${on?'var(--accent)':'var(--text3)'};margin-top:4px;">
+        ${on?'● ON':'○ OFF'}</div>
     </div>`;
   }).join('');
 }
@@ -1524,9 +1667,9 @@ function autoToggleGenre(key) {
 }
 
 function updateAutoUI() {
-  document.getElementById('autoStartBtn').style.display  = autoRunning CLEAR 'none' : '';
-  document.getElementById('autoPauseBtn').style.display  = autoRunning CLEAR '' : 'none';
-  document.getElementById('autoStopBtn').style.display   = autoRunning CLEAR '' : 'none';
+  document.getElementById('autoStartBtn').style.display  = autoRunning ? 'none' : '';
+  document.getElementById('autoPauseBtn').style.display  = autoRunning ? '' : 'none';
+  document.getElementById('autoStopBtn').style.display   = autoRunning ? '' : 'none';
 }
 
 function startAutoPoll() {
@@ -1557,7 +1700,7 @@ async function autoPoll() {
 
     document.getElementById('autoTotalTxt').textContent = d.total;
     document.getElementById('autoDiskTxt').textContent  = d.disk_mb + ' MB';
-    document.getElementById('autoPauseBtn').textContent = d.paused CLEAR '▶ RESUME' : '⏸ PAUSE';
+    document.getElementById('autoPauseBtn').textContent = d.paused ? '▶ RESUME' : '⏸ PAUSE';
 
     // Current download
     const curWrap = document.getElementById('autoCurrentWrap');
@@ -1565,7 +1708,7 @@ async function autoPoll() {
     if (d.current) {
       curWrap.style.display = '';
       curTxt.innerHTML = `<strong>${d.current.genre}</strong> — ${d.current.title || d.current.tag}
-        <span style="color:var(--text3);font-size:11px;"> by ${d.current.author||'CLEAR'}</span>`;
+        <span style="color:var(--text3);font-size:11px;"> by ${d.current.author||'?'}</span>`;
     } else {
       curWrap.style.display = 'none';
     }
@@ -1580,7 +1723,7 @@ async function autoPoll() {
             <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
               ${e.title||e.tag}</div>
             <div style="font-size:10px;color:var(--text3);font-family:monospace;">
-              ${e.genre} · by ${e.author||'CLEAR'} · ${e.time}</div>
+              ${e.genre} · by ${e.author||'?'} · ${e.time}</div>
           </div>
           <a href="/api/files" style="font-size:10px;color:var(--accent);font-family:monospace;">⬇ GET</a>
         </div>`).join('');
@@ -1624,7 +1767,7 @@ function fmtBytes(b) {
 }
 function fmtUptime(s) {
   const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
-  return h CLEAR `${h}h ${m}m` : `${m}m`;
+  return h ? `${h}h ${m}m` : `${m}m`;
 }
 
 async function loadStats() {
@@ -1728,13 +1871,13 @@ async function clearSeen() {
 }
 
 async function statsReset() {
-  if (!confirm('Reset all statsCLEAR This cannot be undone.')) return;
+  if (!confirm('Reset all stats? This cannot be undone.')) return;
   await fetch('/api/stats/reset', {method:'POST'});
   notify('Stats reset', '🗑');
   loadStats();
 }
 
-document.getElementById('blInput')CLEAR.addEventListener('keydown', e => {
+document.getElementById('blInput')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') blAdd();
 });
 
@@ -1755,6 +1898,7 @@ function nav(id, btn) {
   if(id==='sources') { loadSources(); loadTgChannels(); loadCookies(); }
   if(id==='tglib') tgLibLoad();
   if(id==='stats') { loadStats(); if(statsInterval) clearInterval(statsInterval); statsInterval = setInterval(loadStats, 10000); }
+  if(id==='lab') loadFeatureLab();
   if(id!=='stats' && statsInterval) { clearInterval(statsInterval); statsInterval = null; }
 }
 
@@ -1764,7 +1908,7 @@ async function tgLibLoad(page) {
   const stats = document.getElementById('tgLibStats');
   grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:11px;">Loading…</div>';
   try {
-    const r = await fetch(`/api/tgfilesCLEARpage=${tgLibCurrentPage}&limit=${TG_LIB_LIMIT}`);
+    const r = await fetch(`/api/tgfiles?page=${tgLibCurrentPage}&limit=${TG_LIB_LIMIT}`);
     const d = await r.json();
     tgLibTotal = d.total;
     stats.textContent = `${tgLibTotal} files stored in Telegram`;
@@ -1774,17 +1918,17 @@ async function tgLibLoad(page) {
     }
     grid.innerHTML = d.files.map(f => {
       const isVideo = f.type === 'video' || f.type === 'animation';
-      const icon = isVideo CLEAR '🎬' : (f.type === 'audio' CLEAR '🎵' : '🖼');
+      const icon = isVideo ? '🎬' : (f.type === 'audio' ? '🎵' : '🖼');
       const date = new Date(f.timestamp * 1000).toLocaleDateString();
-      const sizeMB = f.size CLEAR (f.size / 1048576).toFixed(1) + ' MB' : '';
+      const sizeMB = f.size ? (f.size / 1048576).toFixed(1) + ' MB' : '';
       return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;" onclick="tgLibDownload('${f.file_id}','${f.name}')">
         <div style="height:90px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:32px;position:relative;">
-          ${f.type==='photo' || f.type==='document' CLEAR `<img src="/api/tgthumb/${f.file_id}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='${icon}'">` : icon}
-          ${isVideo CLEAR '<div style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.6);border-radius:4px;padding:2px 5px;font-size:9px;color:#fff;">▶</div>' : ''}
+          ${f.type==='photo' || f.type==='document' ? `<img src="/api/tgthumb/${f.file_id}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='${icon}'">` : icon}
+          ${isVideo ? '<div style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.6);border-radius:4px;padding:2px 5px;font-size:9px;color:#fff;">▶</div>' : ''}
         </div>
         <div style="padding:8px;">
           <div style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${f.name}">${f.name}</div>
-          <div style="font-size:9px;color:var(--text3);margin-top:3px;">${date} ${sizeMB CLEAR '· ' + sizeMB : ''}</div>
+          <div style="font-size:9px;color:var(--text3);margin-top:3px;">${date} ${sizeMB ? '· ' + sizeMB : ''}</div>
           <button class="btn btn-teal btn-sm" style="width:100%;margin-top:6px;padding:4px;font-size:9px;" onclick="event.stopPropagation();tgLibDownload('${f.file_id}','${f.name}')">⬇ Download</button>
         </div>
       </div>`;
@@ -1792,8 +1936,8 @@ async function tgLibLoad(page) {
     // Pagination
     const totalPages = Math.ceil(tgLibTotal / TG_LIB_LIMIT);
     document.getElementById('tgLibPageInfo').textContent = `Page ${tgLibCurrentPage+1} of ${totalPages}`;
-    document.getElementById('tgLibPrevBtn').style.display = tgLibCurrentPage > 0 CLEAR '' : 'none';
-    document.getElementById('tgLibNextBtn').style.display = tgLibCurrentPage < totalPages-1 CLEAR '' : 'none';
+    document.getElementById('tgLibPrevBtn').style.display = tgLibCurrentPage > 0 ? '' : 'none';
+    document.getElementById('tgLibNextBtn').style.display = tgLibCurrentPage < totalPages-1 ? '' : 'none';
   } catch(e) {
     grid.innerHTML = `<div style="text-align:center;padding:30px;color:var(--accent2);font-size:11px;grid-column:1/-1;">Error loading library: ${e.message}</div>`;
   }
@@ -1837,15 +1981,15 @@ function renderSourceGrid() {
   grid.innerHTML = Object.entries(sourcesData).map(([key, s]) => `
     <div onclick="toggleSource('${key}')" id="src_${key}" style="
       padding:10px 12px;border-radius:8px;cursor:pointer;
-      border:1px solid ${s.enabled CLEAR 'var(--accent)' : 'var(--border)'};
-      background:${s.enabled CLEAR 'rgba(0,229,190,0.08)' : 'var(--bg)'};
+      border:1px solid ${s.enabled ? 'var(--accent)' : 'var(--border)'};
+      background:${s.enabled ? 'rgba(0,229,190,0.08)' : 'var(--bg)'};
       transition:all .2s;">
-      <div style="font-size:11px;font-weight:700;color:${s.enabled CLEAR 'var(--accent)' : 'var(--text2)'};">${s.label}</div>
+      <div style="font-size:11px;font-weight:700;color:${s.enabled ? 'var(--accent)' : 'var(--text2)'};">${s.label}</div>
       <div style="font-size:9px;color:var(--text3);margin-top:3px;">
-        ${s.image CLEAR '🖼 Image' : ''} ${s.video CLEAR '🎬 Video' : ''} ${s.mature CLEAR '🔞 Mature' : '✅ SFW'}
+        ${s.image ? '🖼 Image' : ''} ${s.video ? '🎬 Video' : ''} ${s.mature ? '🔞 Mature' : '✅ SFW'}
       </div>
-      <div style="font-size:9px;margin-top:4px;color:${s.enabled CLEAR 'var(--accent)' : 'var(--text3)'};">
-        ${s.enabled CLEAR '● ON' : '○ OFF'}
+      <div style="font-size:9px;margin-top:4px;color:${s.enabled ? 'var(--accent)' : 'var(--text3)'};">
+        ${s.enabled ? '● ON' : '○ OFF'}
       </div>
     </div>
   `).join('');
@@ -1873,7 +2017,7 @@ async function loadCookies() {
     savedCookieDomains = d.domains || [];
     renderCookieGuides();
     renderCookieDomains();
-    updateCookieGuideText(document.getElementById('cookieDomain')CLEAR.value || '');
+    updateCookieGuideText(document.getElementById('cookieDomain')?.value || '');
   } catch(e) {
     console.error('Cookie load error:', e);
   }
@@ -1898,7 +2042,7 @@ function renderCookieDomains() {
     return;
   }
   el.innerHTML = savedCookieDomains.map(item => {
-    const names = Array.isArray(item.names) && item.names.length CLEAR ` · ${escapeHtml(item.names.join(', '))}` : '';
+    const names = Array.isArray(item.names) && item.names.length ? ` · ${escapeHtml(item.names.join(', '))}` : '';
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);margin-bottom:6px;">
       <div style="flex:1;min-width:0;">
         <div style="font-size:11px;font-weight:700;color:var(--text2);">${escapeHtml(item.domain)}</div>
@@ -1913,7 +2057,7 @@ function renderCookieDomains() {
 function updateCookieGuideText(domain) {
   const guideEl = document.getElementById('cookieGuideText');
   if(!guideEl) return;
-  const normalized = normalizeCookieDomain(domain || document.getElementById('cookieDomain')CLEAR.value || '');
+  const normalized = normalizeCookieDomain(domain || document.getElementById('cookieDomain')?.value || '');
   const guide = cookieGuides[normalized];
   guideEl.textContent = guide || 'Paste a raw Cookie header or a JSON object with cookie name/value pairs.';
 }
@@ -1940,7 +2084,7 @@ async function loadCookieEditor(domain) {
   document.getElementById('cookieDomain').value = d.domain || target;
   document.getElementById('cookieText').value = d.cookie_header || '';
   updateCookieGuideText(d.domain || target);
-  notify(d.cookie_header CLEAR `Loaded cookies for ${d.domain}` : `No saved cookies for ${target}`, d.cookie_header CLEAR 'OK' : 'INFO');
+  notify(d.cookie_header ? `Loaded cookies for ${d.domain}` : `No saved cookies for ${target}`, d.cookie_header ? 'OK' : 'INFO');
 }
 
 async function saveCookies() {
@@ -2000,16 +2144,16 @@ function renderTgChannels() {
   if (!entries.length) { el.innerHTML = '<div style="font-size:10px;color:var(--text3);">No channels configured yet.</div>'; return; }
   el.innerHTML = entries.map(([name, ch]) => `
     <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;
-      border:1px solid ${ch.active CLEAR 'var(--accent)' : 'var(--border)'};
-      background:${ch.active CLEAR 'rgba(0,229,190,0.08)' : 'var(--bg)'};margin-bottom:6px;">
+      border:1px solid ${ch.active ? 'var(--accent)' : 'var(--border)'};
+      background:${ch.active ? 'rgba(0,229,190,0.08)' : 'var(--bg)'};margin-bottom:6px;">
       <div style="flex:1;">
-        <div style="font-size:11px;font-weight:700;color:${ch.active CLEAR 'var(--accent)' : 'var(--text2)'};">
-          ${ch.active CLEAR '● ' : '○ '}${name}
+        <div style="font-size:11px;font-weight:700;color:${ch.active ? 'var(--accent)' : 'var(--text2)'};">
+          ${ch.active ? '● ' : '○ '}${name}
         </div>
         <div style="font-size:9px;color:var(--text3);">Chat ID: ${ch.chat_id}</div>
       </div>
-      ${!ch.active CLEAR `<button class="btn btn-teal btn-sm" onclick="selectTgChannel('${name}')" style="padding:4px 10px;font-size:9px;">USE</button>` : '<span style="font-size:9px;color:var(--accent);">ACTIVE</span>'}
-      ${name !== 'default' CLEAR `<button class="btn btn-ghost btn-sm" onclick="deleteTgChannel('${name}')" style="padding:4px 8px;font-size:9px;">🗑</button>` : ''}
+      ${!ch.active ? `<button class="btn btn-teal btn-sm" onclick="selectTgChannel('${name}')" style="padding:4px 10px;font-size:9px;">USE</button>` : '<span style="font-size:9px;color:var(--accent);">ACTIVE</span>'}
+      ${name !== 'default' ? `<button class="btn btn-ghost btn-sm" onclick="deleteTgChannel('${name}')" style="padding:4px 8px;font-size:9px;">🗑</button>` : ''}
     </div>
   `).join('');
 }
@@ -2083,7 +2227,7 @@ async function tgTest() {
 
 // Poll Telegram status every 5s when auto tab is open
 setInterval(() => {
-  if (document.getElementById('sec-auto')CLEAR.classList.contains('active')) {
+  if (document.getElementById('sec-auto')?.classList.contains('active')) {
     tgRefresh();
   }
 }, 5000);

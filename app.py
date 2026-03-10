@@ -1,7 +1,7 @@
 import os, sys, json, threading, webbrowser, time, re, uuid, random, ast, html as html_lib
 from pathlib import Path
 from urllib.parse import urlparse, quote
-from flask import Flask, render_template, request, jsonify, send_file, Response, stream_with_context
+from flask import Flask, render_template, request, jsonify, send_file, Response, stream_with_context, make_response
 import requests as req
 try:
     from curl_cffi import requests as cffi_req
@@ -58,6 +58,12 @@ try:
 except ImportError:
     _cm = None
     COOKIES_AVAILABLE = False
+try:
+    import project_health as _health
+    HEALTH_AVAILABLE = True
+except ImportError:
+    _health = None
+    HEALTH_AVAILABLE = False
 _is_cloud = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("DYNO"))
 DOWNLOAD_DIR = Path(tempfile.gettempdir()) / "mediavault_downloads" if _is_cloud else BASE_DIR / "downloads"
 DOWNLOAD_DIR.mkdir(exist_ok=True)
@@ -1327,7 +1333,36 @@ def reset_stats():
 # ── ROOT ROUTE ──────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
-    return render_template("index.html", sites=SUPPORTED_SITES)
+    resp = make_response(render_template("index.html", sites=SUPPORTED_SITES))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
+@app.route("/api/feature-packs")
+def get_feature_packs():
+    if not HEALTH_AVAILABLE:
+        return jsonify({"packs": [], "error": "Project health module unavailable"}), 500
+    try:
+        packs = _health.load_feature_packs()
+        return jsonify({
+            "packs": packs,
+            "count": len(packs),
+            "bytes": sum(item.get("size_bytes", 0) for item in packs),
+        })
+    except Exception as e:
+        return jsonify({"packs": [], "error": str(e)}), 500
+
+
+@app.route("/api/health")
+def get_health_report():
+    if not HEALTH_AVAILABLE:
+        return jsonify({"ok": False, "error": "Project health module unavailable"}), 500
+    try:
+        return jsonify(_health.run_health_check())
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 
 
 # ── RANDOM ENDPOINT ───────────────────────────────────────────────────────────
