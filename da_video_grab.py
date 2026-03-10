@@ -27,14 +27,14 @@ HEADERS = {
     "Referer": "https://www.deviantart.com/",
 }
 
-def log(msg): print(f"  → {msg}")
+def log(msg): print(f"  â†’ {msg}")
 
 def get_deviation_id(url):
     m = re.search(r"-(\d+)(?:/|$|\?)", url)
     return m.group(1) if m else None
 
 def method1_eclipse_api(dev_id):
-    """DeviantArt internal Eclipse API — returns video src directly"""
+    """DeviantArt internal Eclipse API â€” returns video src directly"""
     log("Method 1: Eclipse internal API")
     endpoints = [
         f"https://www.deviantart.com/_napi/shared_api/deviation/extended_fetch?deviationid={dev_id}&username=&type=art&include_session=false",
@@ -62,6 +62,7 @@ def method1_eclipse_api(dev_id):
 def method2_oembed(url):
     """oEmbed endpoint"""
     log("Method 2: oEmbed API")
+    dev_id = get_deviation_id(url)
     try:
         r = requests.get(
             f"https://backend.deviantart.com/oembed?url={quote(url)}&format=json",
@@ -69,12 +70,17 @@ def method2_oembed(url):
         )
         if r.status_code == 200:
             d = r.json()
-            for k in ("url","media_url","video_url"):
+            require_video = bool(dev_id and str(d.get("type", "")).lower() in ("video", "rich"))
+            for k in ("video_url", "media_url", "url", "thumbnail_url"):
                 v = d.get(k,"")
                 is_media = bool(re.search(r'\.(mp4|webm|mov|mkv|jpg|jpeg|png|webp)(\?|$)', v, re.I)) or "wixmp" in v
-                if v and v.startswith("http") and is_media:
-                    log(f"  Found via oEmbed: {v[:80]}")
-                    return v
+                if not (v and v.startswith("http") and is_media):
+                    continue
+                is_video = bool(re.search(r'\.(mp4|webm|mov|mkv)(\?|$)', v, re.I))
+                if require_video and not is_video:
+                    continue
+                log(f"  Found via oEmbed: {v[:80]}")
+                return v
     except Exception as e:
         log(f"  oEmbed failed: {e}")
     return None
@@ -82,6 +88,41 @@ def method2_oembed(url):
 def method3_page_scrape(url):
     """Scrape the page HTML directly"""
     log("Method 3: Page HTML scrape")
+
+    def fetch_embed_video(embed_url):
+        if not embed_url:
+            return None
+        fetchers = []
+        if cffi_requests:
+            fetchers.append(lambda target: cffi_requests.get(target, headers=HEADERS, impersonate="chrome124", timeout=20))
+        fetchers.append(lambda target: requests.get(target, headers=HEADERS, timeout=20))
+        for fetcher in fetchers:
+            try:
+                er = fetcher(embed_url)
+                if er.status_code != 200:
+                    continue
+                sm = re.search(r'gmon-sources="([^"]+)"', er.text)
+                if not sm:
+                    continue
+                sources = json.loads(html_lib.unescape(sm.group(1)))
+                best = None
+                best_score = -1
+                for meta in sources.values():
+                    if not isinstance(meta, dict):
+                        continue
+                    src = meta.get("src", "")
+                    if not src.startswith("http"):
+                        continue
+                    score = int(meta.get("width", 0) or 0) * int(meta.get("height", 0) or 0)
+                    if score >= best_score:
+                        best = src
+                        best_score = score
+                if best:
+                    return best
+            except Exception:
+                pass
+        return None
+
     try:
         page_html = ""
         r = requests.get(url, headers=HEADERS, timeout=20)
@@ -100,7 +141,12 @@ def method3_page_scrape(url):
             return None
 
         dev_id = get_deviation_id(url)
-        if cffi_requests and dev_id:
+        if dev_id:
+            direct_embed = fetch_embed_video(f"https://backend.deviantart.com/embed/film/{dev_id}/1/")
+            if direct_embed:
+                log(f"  Found via direct film embed: {direct_embed[:80]}")
+                return direct_embed
+        if dev_id and cffi_requests:
             try:
                 state_match = re.search(
                     r'window\.__INITIAL_STATE__\s*=\s*JSON\.parse\("((?:\\.|[^"\\])*)"\)',
@@ -117,27 +163,10 @@ def method3_page_scrape(url):
                         deviation = (entities.get("deviation", {}) or {}).get(str(dev_id), {})
                         if deviation.get("type") == "film" or deviation.get("isVideo"):
                             embed_url = f"https://backend.deviantart.com/embed/film/{dev_id}/1/"
-                    if embed_url:
-                        er = cffi_requests.get(embed_url, headers=HEADERS, impersonate="chrome124", timeout=20)
-                        if er.status_code == 200:
-                            sm = re.search(r'gmon-sources="([^"]+)"', er.text)
-                            if sm:
-                                sources = json.loads(html_lib.unescape(sm.group(1)))
-                                best = None
-                                best_score = -1
-                                for meta in sources.values():
-                                    if not isinstance(meta, dict):
-                                        continue
-                                    src = meta.get("src", "")
-                                    if not src.startswith("http"):
-                                        continue
-                                    score = int(meta.get("width", 0) or 0) * int(meta.get("height", 0) or 0)
-                                    if score >= best_score:
-                                        best = src
-                                        best_score = score
-                                if best:
-                                    log(f"  Found via embed player: {best[:80]}")
-                                    return best
+                    best = fetch_embed_video(embed_url)
+                    if best:
+                        log(f"  Found via embed player: {best[:80]}")
+                        return best
             except Exception as e:
                 log(f"  Embed scrape failed: {e}")
 
@@ -192,7 +221,7 @@ def hunt_json(obj, depth=0):
     return None
 
 def method4_ytdlp(url):
-    """yt-dlp — most reliable, handles auth"""
+    """yt-dlp â€” most reliable, handles auth"""
     log("Method 4: yt-dlp")
     try:
         import yt_dlp
@@ -237,7 +266,7 @@ def download_video(video_url, out_name="deviantart_video.mp4"):
 
     ct = r.headers.get("content-type","")
     if "html" in ct:
-        print(f"  Server returned HTML instead of video — blocked")
+        print(f"  Server returned HTML instead of video â€” blocked")
         return None
 
     total = int(r.headers.get("content-length",0))
@@ -252,16 +281,16 @@ def download_video(video_url, out_name="deviantart_video.mp4"):
                 print(f"\r  Progress: {pct}% ({done//1024//1024}MB / {total//1024//1024}MB)", end="", flush=True)
     print()
     size = os.path.getsize(out_name)
-    print(f"  ✅ Saved: {out_name} ({size//1024//1024}MB)")
+    print(f"  âœ… Saved: {out_name} ({size//1024//1024}MB)")
     return out_name
 
 
-# ─── MAIN ───────────────────────────────────────────────────────────────────
+# â”€â”€â”€ MAIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if __name__ == "__main__":
     url = sys.argv[1] if len(sys.argv) > 1 else \
         "https://www.deviantart.com/therrrealist/art/AI-Streamer-Sluts-Big-Tits-Flash-Compilation-1297831250"
 
-    print(f"\n🎬 DeviantArt Video Downloader")
+    print(f"\nðŸŽ¬ DeviantArt Video Downloader")
     print(f"   URL: {url}\n")
 
     dev_id = get_deviation_id(url)
@@ -279,7 +308,7 @@ if __name__ == "__main__":
         # yt-dlp handles everything natively
         result = method4_ytdlp(url)
         if result:
-            print(f"\n✅ Downloaded via yt-dlp: {result}")
+            print(f"\nâœ… Downloaded via yt-dlp: {result}")
             sys.exit(0)
 
     if video_url:
@@ -288,11 +317,11 @@ if __name__ == "__main__":
         out = f"da_{dev_id}.mp4"
         result = download_video(video_url, out)
         if result:
-            print(f"\n✅ Done! File saved as: {result}")
+            print(f"\nâœ… Done! File saved as: {result}")
         else:
-            print("\n❌ Download failed")
+            print("\nâŒ Download failed")
     else:
-        print("\n❌ Could not find video URL. Try:")
+        print("\nâŒ Could not find video URL. Try:")
         print("   pip install yt-dlp")
         print(f"   yt-dlp --cookies-from-browser chrome \"{url}\"")
 

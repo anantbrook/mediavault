@@ -1,29 +1,29 @@
 """
-god_mode.py — Universal Download Engine
-════════════════════════════════════════
+god_mode.py â€” Universal Download Engine
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 No website can block this. 10-strategy waterfall that handles:
 
-  • Cloudflare / IUAM challenges
-  • 403 hotlink protection
-  • Token-gated CDNs (wixmp, akamai)  
-  • Redirect wrappers (hotlink.php)
-  • Age-gated / login-required pages
-  • DRM-free video sites (any platform yt-dlp knows)
-  • Direct CDN links (rule34, gelbooru, xbooru, danbooru, etc.)
-  • Long videos (1hr+) via chunked streaming
-  • Sites that detect bots via TLS fingerprint
+  â€¢ Cloudflare / IUAM challenges
+  â€¢ 403 hotlink protection
+  â€¢ Token-gated CDNs (wixmp, akamai)  
+  â€¢ Redirect wrappers (hotlink.php)
+  â€¢ Age-gated / login-required pages
+  â€¢ DRM-free video sites (any platform yt-dlp knows)
+  â€¢ Direct CDN links (rule34, gelbooru, xbooru, danbooru, etc.)
+  â€¢ Long videos (1hr+) via chunked streaming
+  â€¢ Sites that detect bots via TLS fingerprint
 
 Strategies (tried in order):
-  1. Smart direct — correct headers + referer per domain
-  2. Redirect follow — resolve all hops to real URL
-  3. yt-dlp extraction — handles 1000+ platforms natively
-  4. Embedded media hunt — scrape og:video, og:image, source tags
-  5. __NEXT_DATA__ JSON hunt — React/Next.js SPAs
-  6. API endpoint probe — try /api/post/ID, /oembed, etc.
-  7. User-Agent spoof cycle — 8 different browsers
-  8. curl-cffi TLS impersonation — bypasses Cloudflare JS challenge
-  9. Mirror/CDN rewrite — alternate subdomains
- 10. Proxy fallback — SOCKS5/HTTP proxy if configured
+  1. Smart direct â€” correct headers + referer per domain
+  2. Redirect follow â€” resolve all hops to real URL
+  3. yt-dlp extraction â€” handles 1000+ platforms natively
+  4. Embedded media hunt â€” scrape og:video, og:image, source tags
+  5. __NEXT_DATA__ JSON hunt â€” React/Next.js SPAs
+  6. API endpoint probe â€” try /api/post/ID, /oembed, etc.
+  7. User-Agent spoof cycle â€” 8 different browsers
+  8. curl-cffi TLS impersonation â€” bypasses Cloudflare JS challenge
+  9. Mirror/CDN rewrite â€” alternate subdomains
+ 10. Proxy fallback â€” SOCKS5/HTTP proxy if configured
 
 Usage:
   from god_mode import download, can_download, extract_url
@@ -37,14 +37,14 @@ from urllib.parse import urlparse, quote, urljoin, parse_qs
 from typing import Optional, Callable
 import requests
 
-# ── Optional: curl_cffi for TLS fingerprint bypass ───────────────────────────
+# â”€â”€ Optional: curl_cffi for TLS fingerprint bypass â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 try:
     from curl_cffi import requests as cffi_req
     CFFI_AVAILABLE = True
 except ImportError:
     CFFI_AVAILABLE = False
 
-# ── Optional: yt-dlp ─────────────────────────────────────────────────────────
+# â”€â”€ Optional: yt-dlp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 try:
     import yt_dlp
     YTDLP_AVAILABLE = True
@@ -52,14 +52,31 @@ except ImportError:
     yt_dlp = None
     YTDLP_AVAILABLE = False
 
-# ─────────────────────────────────────────────────────────────────────────────
+try:
+    import cookie_manager as _cm
+    COOKIE_STORE_AVAILABLE = True
+except ImportError:
+    _cm = None
+    COOKIE_STORE_AVAILABLE = False
+
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _PROXY: Optional[str] = None
 _LOCK  = threading.Lock()
 
 def set_proxy(p: str): 
     global _PROXY; _PROXY = p.strip() or None
 
-# ── Browser fingerprint pool ──────────────────────────────────────────────────
+
+def _saved_cookie_header(domain: str) -> str:
+    if not COOKIE_STORE_AVAILABLE:
+        return ""
+    try:
+        cookies = _cm.get_cookies(domain.lstrip("www.")) or {}
+    except Exception:
+        return ""
+    return "; ".join(f"{k}={v}" for k, v in cookies.items() if k)
+
+# â”€â”€ Browser fingerprint pool â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _UA_POOL = [
     # Chrome Windows
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -79,7 +96,7 @@ _UA_POOL = [
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
 ]
 
-# ── Per-domain rules: Referer + cookies that bypass age gates ────────────────
+# â”€â”€ Per-domain rules: Referer + cookies that bypass age gates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _DOMAIN_RULES: dict[str, dict] = {
     "rule34.xxx":           {"Referer":"https://rule34.xxx/",           "Cookie":""},
     "api.rule34.xxx":       {"Referer":"https://rule34.xxx/",           "Cookie":""},
@@ -122,7 +139,7 @@ _DOMAIN_RULES: dict[str, dict] = {
     "hentaifox.com":        {"Referer":"https://hentaifox.com/",        "Cookie":""},
 }
 
-# ── CDN mirror rewrites ───────────────────────────────────────────────────────
+# â”€â”€ CDN mirror rewrites â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _CDN_MIRRORS = [
     (r"https://us\.rule34\.xxx/",    "https://wimg.rule34.xxx/"),
     (r"https://wimg\.rule34\.xxx/",  "https://us.rule34.xxx/"),
@@ -132,7 +149,7 @@ _CDN_MIRRORS = [
     (r"https://konachan\.com/data/", "https://konachan.net/data/"),
 ]
 
-# ── Session pool ─────────────────────────────────────────────────────────────
+# â”€â”€ Session pool â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _sessions: dict[str, requests.Session] = {}
 _sess_lock = threading.Lock()
 
@@ -160,20 +177,29 @@ def _headers(url: str, ua: str = None) -> dict:
     }
     if rules.get("Referer"): h["Referer"] = rules["Referer"]
     else:                    h["Referer"] = f"https://{domain}/"
-    if rules.get("Cookie"):  h["Cookie"]  = rules["Cookie"]
+    cookie_parts = []
+    if rules.get("Cookie"):
+        cookie_parts.append(rules["Cookie"])
+    saved_cookie_header = _saved_cookie_header(domain)
+    if saved_cookie_header:
+        cookie_parts.append(saved_cookie_header)
+    if cookie_parts:
+        h["Cookie"] = "; ".join(part for part in cookie_parts if part)
     return h
 
 
 def _use_browser_cookies(url: str) -> bool:
     if os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("DYNO"):
         return False
-    domain = urlparse(url).netloc.lower()
+    domain = urlparse(url).netloc.lower().lstrip("www.")
+    if _saved_cookie_header(domain):
+        return False
     return "deviantart.com" in domain
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  STRATEGY 1 — Smart direct download
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+#  STRATEGY 1 â€” Smart direct download
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _try_direct(url: str, dest: Path, progress_cb, timeout: int = 300):
     domain = urlparse(url).netloc.lstrip("www.")
     sess   = _session(domain)
@@ -184,7 +210,7 @@ def _try_direct(url: str, dest: Path, progress_cb, timeout: int = 300):
     if is_vid:
         h["Accept"] = "video/mp4,video/webm,video/*;q=0.9,*/*;q=0.5"
 
-    # (connect_timeout, read_timeout) — connect fast, read forever for large files
+    # (connect_timeout, read_timeout) â€” connect fast, read forever for large files
     req_timeout = (30, None) if is_vid else (20, 120)
 
     last_err = "no attempts made"
@@ -199,7 +225,7 @@ def _try_direct(url: str, dest: Path, progress_cb, timeout: int = 300):
             r = sess.get(url, headers=h, timeout=req_timeout,
                          stream=True, allow_redirects=True)
             if r.status_code in (200, 206):
-                # Check if server says video but our dest has image extension — fix it
+                # Check if server says video but our dest has image extension â€” fix it
                 resp_ct = r.headers.get("content-type","").split(";")[0].strip().lower()
                 if resp_ct.startswith("video/") and dest.suffix.lower() in (".jpg",".jpeg",".png",".webp",".avif"):
                     ct_ext = {"video/mp4":".mp4","video/webm":".webm","video/quicktime":".mov"}.get(resp_ct,".mp4")
@@ -217,9 +243,9 @@ def _try_direct(url: str, dest: Path, progress_cb, timeout: int = 300):
     return None, last_err
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  STRATEGY 2 — Follow all redirects, find real URL
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+#  STRATEGY 2 â€” Follow all redirects, find real URL
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _follow_redirects(url: str, max_hops: int = 10) -> Optional[str]:
     current = url
     visited = set()
@@ -248,9 +274,9 @@ def _follow_redirects(url: str, max_hops: int = 10) -> Optional[str]:
     return None
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  STRATEGY 3 — yt-dlp (handles 1000+ sites, long videos, playlists)
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+#  STRATEGY 3 â€” yt-dlp (handles 1000+ sites, long videos, playlists)
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _try_ytdlp(url: str, dest_dir: Path, filename: str, progress_cb, quality: str = "best") -> tuple[bool, str, str]:
     if not YTDLP_AVAILABLE:
         return False, "", "yt-dlp not installed"
@@ -286,7 +312,7 @@ def _try_ytdlp(url: str, dest_dir: Path, filename: str, progress_cb, quality: st
         "writethumbnail":      False,
         "noplaylist":          True,
         "ignoreerrors":        False,
-        # ── Bypass ALL restrictions ──────────────────────────────────────
+        # â”€â”€ Bypass ALL restrictions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         "age_limit":           99,             # 99 = allow all ages
         "geo_bypass":          True,
         "geo_bypass_country":  "US",
@@ -297,7 +323,7 @@ def _try_ytdlp(url: str, dest_dir: Path, filename: str, progress_cb, quality: st
         "http_chunk_size":     10485760,       # 10MB chunks for large videos
         "buffersize":          1048576,        # 1MB buffer
         "concurrent_fragment_downloads": 4,   # download 4 fragments at once
-        # ── Browser impersonation ────────────────────────────────────────
+        # â”€â”€ Browser impersonation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         "http_headers": {
             "User-Agent": random.choice(_UA_POOL),
             "Referer":    f"https://{urlparse(url).netloc}/",
@@ -349,9 +375,9 @@ def _try_ytdlp(url: str, dest_dir: Path, filename: str, progress_cb, quality: st
         return False, "", str(e)
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  STRATEGY 4 — Scrape page for embedded media
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+#  STRATEGY 4 â€” Scrape page for embedded media
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _scrape_page_media(url: str) -> Optional[str]:
     """Find best direct media URL by scraping the page HTML."""
     try:
@@ -374,7 +400,7 @@ def _scrape_page_media(url: str) -> Optional[str]:
                 m = re.search(pat, html, re.I)
                 if m:
                     v = m.group(1).replace("&amp;","&")
-                    # Skip embed/iframe player URLs — we want direct file URLs
+                    # Skip embed/iframe player URLs â€” we want direct file URLs
                     if not any(skip in v for skip in ("/embed/","/player/","/watch?",".swf","iframe")):
                         return v
 
@@ -416,9 +442,9 @@ def _scrape_page_media(url: str) -> Optional[str]:
     return None
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  STRATEGY 5 — __NEXT_DATA__ deep scan (React/Next.js SPAs)
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+#  STRATEGY 5 â€” __NEXT_DATA__ deep scan (React/Next.js SPAs)
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _scrape_next_data(url: str) -> Optional[str]:
     try:
         h = _headers(url)
@@ -461,13 +487,13 @@ def _scrape_next_data(url: str) -> Optional[str]:
     return None
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  STRATEGY 6 — API probing (oEmbed, site-specific APIs)
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+#  STRATEGY 6 â€” API probing (oEmbed, site-specific APIs)
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _try_api_probe(url: str) -> Optional[str]:
     domain = urlparse(url).netloc
 
-    # oEmbed — works on DeviantArt, Twitter, Reddit, many others
+    # oEmbed â€” works on DeviantArt, Twitter, Reddit, many others
     oembed_url = f"https://noembed.com/embed?url={quote(url)}"
     try:
         r = requests.get(oembed_url, headers={"User-Agent": _UA_POOL[0]}, timeout=10)
@@ -495,9 +521,9 @@ def _try_api_probe(url: str) -> Optional[str]:
     return None
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  STRATEGY 7 — UA cycle (try each browser identity)
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+#  STRATEGY 7 â€” UA cycle (try each browser identity)
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _try_ua_cycle(url: str, dest: Path, progress_cb):
     url_lc3 = url.lower().split("?")[0]
     is_vid3  = any(url_lc3.endswith(x) for x in (".mp4",".webm",".mkv",".mov",".flv"))
@@ -513,9 +539,9 @@ def _try_ua_cycle(url: str, dest: Path, progress_cb):
     return None, "all UA attempts failed"
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  STRATEGY 8 — curl-cffi TLS impersonation (bypasses Cloudflare JS challenge)
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+#  STRATEGY 8 â€” curl-cffi TLS impersonation (bypasses Cloudflare JS challenge)
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _try_cffi(url: str, dest: Path, progress_cb):
     if not CFFI_AVAILABLE:
         return None, "curl_cffi not installed"
@@ -538,9 +564,9 @@ def _try_cffi(url: str, dest: Path, progress_cb):
     return None, f"cffi returned {r.status_code}"
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  STRATEGY 9 — CDN mirror rewrite
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+#  STRATEGY 9 â€” CDN mirror rewrite
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _try_mirror(url: str, dest: Path, progress_cb):
     for pattern, replacement in _CDN_MIRRORS:
         if re.search(pattern, url):
@@ -551,9 +577,9 @@ def _try_mirror(url: str, dest: Path, progress_cb):
     return None, "no mirror matched"
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  STRATEGY 10 — Proxy fallback
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+#  STRATEGY 10 â€” Proxy fallback
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def _try_proxy_direct(url: str, dest: Path, progress_cb):
     if not _PROXY:
         return None, "no proxy configured"
@@ -571,9 +597,9 @@ def _try_proxy_direct(url: str, dest: Path, progress_cb):
     return None, "proxy request failed"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 #  Shared: stream response to file
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _stream_to_file(r, dest: Path, progress_cb) -> tuple[Optional[Path], str]:
     """Stream response to file. Handles videos of any size. Auto-corrects extension from Content-Type."""
     total = int(r.headers.get("content-length", 0))
@@ -585,7 +611,7 @@ def _stream_to_file(r, dest: Path, progress_cb) -> tuple[Optional[Path], str]:
     resp_ct = r.headers.get("content-type","").split(";")[0].strip().lower()
     is_video_resp = resp_ct.startswith("video/") or resp_ct == "application/octet-stream"
 
-    # If server says video but dest is named .jpg/.png — fix the filename NOW
+    # If server says video but dest is named .jpg/.png â€” fix the filename NOW
     if is_video_resp and dest.suffix.lower() in (".jpg",".jpeg",".png",".webp",".avif",".bmp"):
         # Map content-type to correct extension
         ct_ext_map = {"video/mp4":".mp4","video/webm":".webm","video/quicktime":".mov","video/x-matroska":".mkv"}
@@ -594,7 +620,7 @@ def _stream_to_file(r, dest: Path, progress_cb) -> tuple[Optional[Path], str]:
         c = 1
         while new_dest.exists(): new_dest = dest.parent / f"{dest.stem}_{c}{correct_ext}"; c += 1
         dest = new_dest
-        print(f"[GOD] ⚠️  Corrected extension: {dest.name} (server sent {resp_ct})")
+        print(f"[GOD] âš ï¸  Corrected extension: {dest.name} (server sent {resp_ct})")
 
     try:
         with open(dest, "wb") as f:
@@ -634,7 +660,7 @@ def _stream_to_file(r, dest: Path, progress_cb) -> tuple[Optional[Path], str]:
                             c = 1
                             while new_dest.exists(): new_dest = dest.parent / f"{dest.stem}_{c}{correct_ext}"; c += 1
                             dest = new_dest
-                            print(f"[GOD] ⚠️  Magic byte correction: {dest.name}")
+                            print(f"[GOD] âš ï¸  Magic byte correction: {dest.name}")
                             f = open(dest, "wb")
                 f.write(chunk)
                 done += len(chunk)
@@ -646,16 +672,16 @@ def _stream_to_file(r, dest: Path, progress_cb) -> tuple[Optional[Path], str]:
             dest.unlink(missing_ok=True)
             return None, f"file too small ({fsize}B)"
 
-        print(f"[GOD] ✅ Saved {dest.name} ({fsize//1024}KB)")
+        print(f"[GOD] âœ… Saved {dest.name} ({fsize//1024}KB)")
         return dest, ""
     except Exception as e:
         dest.unlink(missing_ok=True)
         return None, f"write error: {e}"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 #  Detect file extension from content-type + URL
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _ext(url: str, ct: str = "") -> str:
     ct = ct.split(";")[0].strip().lower()
     ct_map = {
@@ -663,7 +689,7 @@ def _ext(url: str, ct: str = "") -> str:
         "image/gif":".gif","image/webp":".webp","image/avif":".avif",
         "video/mp4":".mp4","video/webm":".webm","video/quicktime":".mov",
         "video/x-matroska":".mkv","video/x-flv":".flv","video/avi":".avi",
-        # application/octet-stream = raw binary from CDN — almost always video
+        # application/octet-stream = raw binary from CDN â€” almost always video
         "application/octet-stream": ".mp4",
     }
     if ct in ct_map: return ct_map[ct]
@@ -680,9 +706,9 @@ def _is_video_url(url: str, ct: str = "") -> bool:
     return any(url_lc.endswith(x) for x in (".mp4",".webm",".mkv",".mov",".flv",".avi",".ts",".m4v"))
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 #  Resolve hotlink/redirect wrappers before anything
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _resolve_wrapper(url: str) -> str:
     qs = parse_qs(urlparse(url).query)
     # ?img=, ?url=, ?src= style wrappers
@@ -708,9 +734,9 @@ def _resolve_wrapper(url: str) -> str:
     return url
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 #  MAIN PUBLIC API
-# ═════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 def download(
     url:         str,
@@ -730,13 +756,13 @@ def download(
     dest_dir = Path(dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Step 0: Resolve wrappers ──────────────────────────────────────────────
+    # â”€â”€ Step 0: Resolve wrappers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     real_url = _resolve_wrapper(url)
     if real_url != url:
-        print(f"[GOD] Unwrapped: {url[:50]} → {real_url[:50]}")
+        print(f"[GOD] Unwrapped: {url[:50]} â†’ {real_url[:50]}")
         url = real_url
 
-    # ── Step 1: Determine if this is a direct media URL ───────────────────────
+    # â”€â”€ Step 1: Determine if this is a direct media URL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     url_path = urlparse(url).path.lower()
     is_direct = bool(re.search(r"\.(jpg|jpeg|png|gif|webp|avif|mp4|webm|mkv|mov|flv|avi|bmp|tiff)$", url_path))
     is_booru_cdn = any(d in url for d in [
@@ -755,16 +781,16 @@ def download(
 
     errors = []
 
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # PATH A: Direct media URL (booru CDN, wixmp, direct image/video)
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if is_direct or is_booru_cdn:
-        # Determine extension — check URL first, then Content-Type from server
+        # Determine extension â€” check URL first, then Content-Type from server
         ext = _ext(url)
         url_lc = url.lower().split("?")[0]
         real_ct = ""
 
-        # Known video CDN patterns — skip HEAD, just use .mp4
+        # Known video CDN patterns â€” skip HEAD, just use .mp4
         _VIDEO_CDN_HINTS = (
             "/images/", "/data/", "/files/", "/video/", "/mp4/",
             "animated", "mmd", "3d_animation",
@@ -778,7 +804,7 @@ def download(
         )
 
         if not ext:
-            # Only do HEAD if not a known booru CDN (many block HEAD → wrong result)
+            # Only do HEAD if not a known booru CDN (many block HEAD â†’ wrong result)
             skip_head = any(d in url for d in _BOORU_VIDEO_DOMAINS)
             if not skip_head:
                 try:
@@ -840,11 +866,11 @@ def download(
 
         return False, "", " | ".join(errors)
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # PATH B: Page URL — need to extract media first, then download
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # PATH B: Page URL â€” need to extract media first, then download
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    # Strategy 3: yt-dlp (handles pages natively — YouTube, Twitter, Reddit, DA, etc.)
+    # Strategy 3: yt-dlp (handles pages natively â€” YouTube, Twitter, Reddit, DA, etc.)
     ok, fpath, err = _try_ytdlp(url, dest_dir, fname_base, progress_cb, quality)
     if ok: return True, fpath, ""
     errors.append(f"ytdlp: {err}")
@@ -925,7 +951,8 @@ def extract_url(url: str) -> Optional[str]:
 
 def inject_cookies(domain: str, cookies: dict):
     """Inject cookies into the session for a specific domain."""
-    sess = _session(domain)
+    normalized = domain.lstrip("www.")
+    sess = _session(normalized)
     for k, v in cookies.items():
-        sess.cookies.set(k, v, domain=domain)
+        sess.cookies.set(k, v, domain=normalized)
 
