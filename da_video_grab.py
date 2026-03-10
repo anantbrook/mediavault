@@ -27,14 +27,14 @@ HEADERS = {
     "Referer": "https://www.deviantart.com/",
 }
 
-def log(msg): print(f"  â†’ {msg}")
+def log(msg): print(f"  → {msg}")
 
 def get_deviation_id(url):
     m = re.search(r"-(\d+)(?:/|$|\?)", url)
     return m.group(1) if m else None
 
 def method1_eclipse_api(dev_id):
-    """DeviantArt internal Eclipse API â€” returns video src directly"""
+    """DeviantArt internal Eclipse API — returns video src directly"""
     log("Method 1: Eclipse internal API")
     endpoints = [
         f"https://www.deviantart.com/_napi/shared_api/deviation/extended_fetch?deviationid={dev_id}&username=&type=art&include_session=false",
@@ -221,7 +221,7 @@ def hunt_json(obj, depth=0):
     return None
 
 def method4_ytdlp(url):
-    """yt-dlp â€” most reliable, handles auth"""
+    """yt-dlp — most reliable, handles auth"""
     log("Method 4: yt-dlp")
     try:
         import yt_dlp
@@ -266,7 +266,7 @@ def download_video(video_url, out_name="deviantart_video.mp4"):
 
     ct = r.headers.get("content-type","")
     if "html" in ct:
-        print(f"  Server returned HTML instead of video â€” blocked")
+        print(f"  Server returned HTML instead of video — blocked")
         return None
 
     total = int(r.headers.get("content-length",0))
@@ -281,16 +281,16 @@ def download_video(video_url, out_name="deviantart_video.mp4"):
                 print(f"\r  Progress: {pct}% ({done//1024//1024}MB / {total//1024//1024}MB)", end="", flush=True)
     print()
     size = os.path.getsize(out_name)
-    print(f"  âœ… Saved: {out_name} ({size//1024//1024}MB)")
+    print(f"  ✅ Saved: {out_name} ({size//1024//1024}MB)")
     return out_name
 
 
-# â”€â”€â”€ MAIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── MAIN ───────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     url = sys.argv[1] if len(sys.argv) > 1 else \
         "https://www.deviantart.com/therrrealist/art/AI-Streamer-Sluts-Big-Tits-Flash-Compilation-1297831250"
 
-    print(f"\nðŸŽ¬ DeviantArt Video Downloader")
+    print(f"\n🎬 DeviantArt Video Downloader")
     print(f"   URL: {url}\n")
 
     dev_id = get_deviation_id(url)
@@ -308,7 +308,7 @@ if __name__ == "__main__":
         # yt-dlp handles everything natively
         result = method4_ytdlp(url)
         if result:
-            print(f"\nâœ… Downloaded via yt-dlp: {result}")
+            print(f"\n✅ Downloaded via yt-dlp: {result}")
             sys.exit(0)
 
     if video_url:
@@ -317,11 +317,11 @@ if __name__ == "__main__":
         out = f"da_{dev_id}.mp4"
         result = download_video(video_url, out)
         if result:
-            print(f"\nâœ… Done! File saved as: {result}")
+            print(f"\n✅ Done! File saved as: {result}")
         else:
-            print("\nâŒ Download failed")
+            print("\n❌ Download failed")
     else:
-        print("\nâŒ Could not find video URL. Try:")
+        print("\n❌ Could not find video URL. Try:")
         print("   pip install yt-dlp")
         print(f"   yt-dlp --cookies-from-browser chrome \"{url}\"")
 

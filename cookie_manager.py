@@ -1,6 +1,6 @@
 """
 cookie_manager.py
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+─────────────────
 Stores, loads, and applies per-site cookies so login-gated sites work.
 Users paste cookies from browser DevTools. Cookies encrypted at rest.
 """
@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 COOKIE_FILE = Path(tempfile.gettempdir()) / "mediavault_cookies.json"
-_cookies: dict[str, dict] = {}   # domain â†’ {name: value}
+_cookies: dict[str, dict] = {}   # domain → {name: value}
 
 
 def _load():
@@ -104,15 +104,15 @@ def apply_to_session(session, domain: str):
 
 # Supported sites with instructions for getting cookies
 COOKIE_GUIDES = {
-    "pixiv.net": "Log in â†’ F12 â†’ Application â†’ Cookies â†’ pixiv.net â†’ copy all",
-    "danbooru.donmai.us": "Log in â†’ F12 â†’ Application â†’ Cookies â†’ copy: cf_clearance, danbooru_user_id, pass_hash",
-    "twitter.com": "Log in â†’ F12 â†’ Application â†’ Cookies â†’ twitter.com â†’ copy: auth_token, ct0",
-    "instagram.com": "Log in â†’ F12 â†’ Application â†’ Cookies â†’ copy: sessionid, csrftoken",
-    "reddit.com": "Log in â†’ F12 â†’ Application â†’ Cookies â†’ copy: reddit_session, token_v2",
-    "e621.net": "Log in â†’ F12 â†’ Application â†’ Cookies â†’ copy: _session, cf_clearance",
-    "patreon.com": "Log in â†’ F12 â†’ Application â†’ Cookies â†’ copy: session_id",
-    "deviantart.com": "Log in â†’ F12 â†’ Application â†’ Cookies â†’ copy: auth, auth_secure",
-    "artstation.com": "Log in â†’ F12 â†’ Application â†’ Cookies â†’ copy: _rails_session",
+    "pixiv.net": "Log in → F12 → Application → Cookies → pixiv.net → copy all",
+    "danbooru.donmai.us": "Log in → F12 → Application → Cookies → copy: cf_clearance, danbooru_user_id, pass_hash",
+    "twitter.com": "Log in → F12 → Application → Cookies → twitter.com → copy: auth_token, ct0",
+    "instagram.com": "Log in → F12 → Application → Cookies → copy: sessionid, csrftoken",
+    "reddit.com": "Log in → F12 → Application → Cookies → copy: reddit_session, token_v2",
+    "e621.net": "Log in → F12 → Application → Cookies → copy: _session, cf_clearance",
+    "patreon.com": "Log in → F12 → Application → Cookies → copy: session_id",
+    "deviantart.com": "Log in → F12 → Application → Cookies → copy: auth, auth_secure",
+    "artstation.com": "Log in → F12 → Application → Cookies → copy: _rails_session",
 }
 
 

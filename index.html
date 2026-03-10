@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MEDIA VAULT Ã¢â‚¬â€ Universal Downloader</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<title>MEDIA VAULT - Universal Downloader</title>
+<link href="https://fonts.googleapis.com/css2CLEARfamily=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#07090e;--surface:#0d1117;--surface2:#131921;--border:#1a2535;
@@ -17,10 +17,10 @@ html{scroll-behavior:smooth;}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,245,196,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,196,.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ LAYOUT Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── LAYOUT ── */
 .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;position:relative;z-index:1;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ SIDEBAR Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── SIDEBAR ── */
 .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
 .sidebar::-webkit-scrollbar{width:2px;}
 .sidebar::-webkit-scrollbar-thumb{background:var(--accent3);}
@@ -33,17 +33,17 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .nav-btn{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 4px;border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--text2);transition:all .2s;border:none;background:none;width:calc(100% - 8px);text-align:left;}
 .nav-btn:hover{background:rgba(0,245,196,.06);color:var(--text);}
 .nav-btn.active{background:rgba(0,245,196,.08);color:var(--accent);border-left:2px solid var(--accent);}
-.nav-btn .ni{font-size:16px;width:20px;text-align:center;}
+.nav-btn .ni{display:none;}
 .nav-badge{margin-left:auto;background:var(--accent3);color:#fff;font-size:8px;padding:2px 5px;border-radius:4px;font-family:'Space Mono',monospace;}
 .site-list{padding:8px 12px 12px;}
 .site-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;margin:2px;border:1px solid var(--border);border-radius:5px;font-size:10px;font-family:'Space Mono',monospace;cursor:pointer;color:var(--text3);transition:all .2s;}
 .site-chip:hover,.site-chip.on{border-color:var(--accent);color:var(--accent);background:rgba(0,245,196,.05);}
 .sidebar-foot{margin-top:auto;padding:14px 16px;border-top:1px solid var(--border);font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ MAIN Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── MAIN ── */
 .main{display:flex;flex-direction:column;min-height:100vh;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ TOPBAR Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── TOPBAR ── */
 .topbar{padding:14px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;background:rgba(7,9,14,.85);backdrop-filter:blur(16px);position:sticky;top:0;z-index:100;}
 .tb-title{font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:3px;color:var(--text2);}
 .tb-title span{color:var(--accent);}
@@ -53,10 +53,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .stat-lbl{font-size:8px;color:var(--text3);letter-spacing:1px;}
 .tb-btns{display:flex;gap:8px;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ CONTENT Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── CONTENT ── */
 .content{padding:24px 28px;flex:1;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ PANELS Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── PANELS ── */
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;position:relative;overflow:hidden;}
 .panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
 .panel-teal::before{background:linear-gradient(90deg,var(--accent),transparent);}
@@ -67,13 +67,13 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .pt{font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:2px;display:flex;align-items:center;gap:8px;}
 .ps{font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;margin-top:3px;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ INPUTS Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── INPUTS ── */
 .inp{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:13px 16px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;outline:none;transition:all .25s;width:100%;}
 .inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,245,196,.08);}
 .inp::placeholder{color:var(--text3);}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ BUTTONS Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── BUTTONS ── */
 .btn{padding:12px 20px;border:none;border-radius:9px;cursor:pointer;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.5px;transition:all .2s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;}
 .btn:active{transform:scale(.97);}
 .btn-teal{background:linear-gradient(135deg,var(--accent),#00cca6);color:#000;}
@@ -89,13 +89,13 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .btn-sm{padding:8px 14px;font-size:10px;}
 .btn-icon{width:34px;height:34px;padding:0;justify-content:center;font-size:14px;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ SELECTS Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── SELECTS ── */
 .sel-wrap{position:relative;}
 .sel-wrap select{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 30px 10px 12px;color:var(--text);font-family:'Space Mono',monospace;font-size:11px;outline:none;appearance:none;cursor:pointer;transition:border-color .2s;}
 .sel-wrap select:focus{border-color:var(--accent);}
-.sel-wrap::after{content:'Ã¢â€“Â¾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none;font-size:10px;}
+.sel-wrap::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none;font-size:10px;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ TOGGLE Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── TOGGLE ── */
 .tog-wrap{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;color:var(--text2);transition:all .2s;user-select:none;}
 .tog-wrap:hover{border-color:var(--accent3);}
 .tog{width:34px;height:18px;background:var(--border);border-radius:20px;position:relative;transition:all .3s;flex-shrink:0;}
@@ -103,7 +103,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .tog::after{content:'';position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:2px;left:2px;transition:all .3s;box-shadow:0 1px 3px rgba(0,0,0,.4);}
 .tog.on::after{left:18px;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ TAGS Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── TAGS ── */
 .tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:9px;font-family:'Space Mono',monospace;letter-spacing:.5px;}
 .tag-teal{background:rgba(0,245,196,.1);color:var(--accent);border:1px solid rgba(0,245,196,.2);}
 .tag-red{background:rgba(255,62,108,.1);color:var(--accent2);border:1px solid rgba(255,62,108,.2);}
@@ -111,36 +111,36 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .tag-gold{background:rgba(255,184,0,.1);color:var(--accent4);border:1px solid rgba(255,184,0,.2);}
 .tag-gray{background:rgba(122,143,166,.1);color:var(--text2);border:1px solid var(--border);}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ PROGRESS Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── PROGRESS ── */
 .pbar{width:100%;height:5px;background:var(--border);border-radius:5px;overflow:hidden;margin:10px 0;}
 .pfill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accent3),var(--accent));transition:width .4s ease;position:relative;overflow:hidden;}
 .pfill::after{content:'';position:absolute;top:0;right:0;bottom:0;width:60px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4));animation:shine .8s infinite;}
 @keyframes shine{0%{opacity:0;}50%{opacity:1;}100%{opacity:0;}}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ GRID Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── GRID ── */
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ PREVIEW Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── PREVIEW ── */
 .preview-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;min-height:180px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
 .preview-box img,.preview-box video{max-width:100%;max-height:280px;object-fit:contain;border-radius:8px;}
 .prev-ph{text-align:center;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;padding:30px;}
 .prev-ph .ico{font-size:44px;display:block;margin-bottom:10px;opacity:.35;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ META Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── META ── */
 .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
 .meta-cell{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;}
 .mc-lbl{font-size:8px;font-family:'Space Mono',monospace;color:var(--text3);letter-spacing:1px;margin-bottom:3px;}
 .mc-val{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ QUALITY CHIPS Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── QUALITY CHIPS ── */
 .qchips{display:flex;gap:7px;flex-wrap:wrap;}
 .qchip{padding:7px 14px;border:1px solid var(--border);border-radius:6px;font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;position:relative;}
 .qchip:hover{border-color:var(--accent3);}
 .qchip.sel{background:rgba(124,92,252,.12);border-color:var(--accent3);color:var(--accent3);}
 .qchip .qbadge{position:absolute;top:-7px;right:-7px;background:var(--accent2);color:#fff;font-size:7px;padding:1px 4px;border-radius:3px;letter-spacing:.5px;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ DOWNLOAD ITEM Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── DOWNLOAD ITEM ── */
 .dl-item{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg);border:1px solid var(--border);border-radius:9px;transition:all .2s;}
 .dl-item:hover{border-color:rgba(0,245,196,.15);}
 .dl-thumb{width:52px;height:40px;background:var(--surface2);border-radius:6px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;}
@@ -150,11 +150,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .dl-meta{font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-top:2px;}
 .dl-actions{display:flex;gap:6px;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ NOTIFICATION Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── NOTIFICATION ── */
 #notif{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:12px 18px;font-family:'Space Mono',monospace;font-size:11px;z-index:9999;transform:translateY(60px);opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;gap:10px;max-width:320px;box-shadow:var(--glow);}
 #notif.show{transform:translateY(0);opacity:1;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ MODAL Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── MODAL ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(10px);}
 .overlay.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px;width:460px;max-width:92vw;animation:popIn .3s cubic-bezier(.34,1.56,.64,1);}
@@ -163,13 +163,13 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .modal-close{position:absolute;top:14px;right:14px;background:var(--bg);border:1px solid var(--border);border-radius:7px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:14px;transition:all .2s;}
 .modal-close:hover{border-color:var(--accent2);color:var(--accent2);}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ SHARE Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── SHARE ── */
 .share-plat{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;}
 .spl-btn{padding:12px 6px;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all .2s;font-size:20px;}
 .spl-btn:hover{transform:scale(1.06);border-color:var(--accent3);}
 .spl-btn span{display:block;font-size:9px;margin-top:3px;color:var(--text3);font-family:'Space Mono',monospace;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ RANDOM Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── RANDOM ── */
 .rand-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px;}
 .rand-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;cursor:pointer;transition:all .3s;text-align:center;}
 .rand-card:hover{border-color:var(--accent3);transform:translateY(-3px);box-shadow:0 8px 28px rgba(124,92,252,.12);}
@@ -177,7 +177,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .rand-card h3{font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:2px;margin-bottom:5px;}
 .rand-card p{font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;line-height:1.5;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ FILE LIST Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── FILE LIST ── */
 .file-list{display:flex;flex-direction:column;gap:7px;max-height:360px;overflow-y:auto;}
 .file-list::-webkit-scrollbar{width:3px;}
 .file-list::-webkit-scrollbar-thumb{background:var(--accent3);}
@@ -189,20 +189,20 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .fi-name{flex:1;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .fi-size{font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ SPINNER Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── SPINNER ── */
 .spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:rotate .7s linear infinite;display:none;}
 @keyframes rotate{to{transform:rotate(360deg);}}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ SECTIONS Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── SECTIONS ── */
 .sec{display:none;flex-direction:column;gap:18px;}
 .sec.active{display:flex;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ SCROLLBAR Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ STATUS BADGE Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ── STATUS BADGE ── */
 .status-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-family:'Space Mono',monospace;font-size:11px;margin-bottom:4px;}
 
 .stat-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
@@ -220,7 +220,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <body>
 <div class="app">
 
-<!-- Ã¢â€â‚¬Ã¢â€â‚¬ SIDEBAR Ã¢â€â‚¬Ã¢â€â‚¬ -->
+<!-- ── SIDEBAR ── -->
 <aside class="sidebar">
   <div class="logo">
     <div class="logo-mark">MEDIA VAULT</div>
@@ -228,20 +228,20 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   </div>
 
   <div class="nav-grp">MAIN</div>
-  <button class="nav-btn active" onclick="nav('download',this)"><span class="ni">Ã¢Â¬â€¡Ã¯Â¸Â</span>Download</button>
-  <button class="nav-btn" onclick="nav('random',this)"><span class="ni">Ã°Å¸Å½Â²</span>Random Pick<span class="nav-badge">HOT</span></button>
-  <button class="nav-btn" onclick="nav('batch',this)"><span class="ni">Ã°Å¸â€œÂ¦</span>Batch Download</button>
-  <button class="nav-btn" onclick="nav('files',this)"><span class="ni">Ã°Å¸â€œÂ</span>My Files</button>
-  <button class="nav-btn" onclick="nav('history',this)"><span class="ni">Ã°Å¸â€¢â€œ</span>History</button>
-  <button class="nav-btn" onclick="nav('auto',this)" id="autoNavBtn"><span class="ni">Ã°Å¸Â¤â€“</span>Auto 24/7<span class="nav-badge" id="autoNavBadge" style="background:#ff3e6c;display:none;">ON</span></button>
-        <button class="nav-btn" onclick="nav('sources',this)" id="sourcesNavBtn"><span class="ni">Ã°Å¸Å’Â</span>Sources</button>
-        <button class="nav-btn" onclick="nav('tglib',this)" id="tglibNavBtn"><span class="ni">Ã¢Å“Ë†Ã¯Â¸Â</span>TG Library</button>
-        <button class="nav-btn" onclick="nav('stats',this)" id="statsNavBtn"><span class="ni">Ã°Å¸â€œÅ </span>Stats</button>
+  <button class="nav-btn active" onclick="nav('download',this)">Download</button>
+  <button class="nav-btn" onclick="nav('random',this)">Random Pick<span class="nav-badge">HOT</span></button>
+  <button class="nav-btn" onclick="nav('batch',this)">Batch Download</button>
+  <button class="nav-btn" onclick="nav('files',this)">My Files</button>
+  <button class="nav-btn" onclick="nav('history',this)">History</button>
+  <button class="nav-btn" onclick="nav('auto',this)" id="autoNavBtn">Auto 24/7<span class="nav-badge" id="autoNavBadge" style="background:#ff3e6c;display:none;">ON</span></button>
+        <button class="nav-btn" onclick="nav('sources',this)" id="sourcesNavBtn">Sources</button>
+        <button class="nav-btn" onclick="nav('tglib',this)" id="tglibNavBtn">TG Library</button>
+        <button class="nav-btn" onclick="nav('stats',this)" id="statsNavBtn">Stats</button>
 
   <div class="nav-grp">PLATFORMS</div>
   <div class="site-list" id="siteChips">
     {% for site in sites %}
-    <span class="site-chip" onclick="setSiteUrl(this,'{{site.url}}')">{{site.icon}} {{site.name}}</span>
+    <span class="site-chip" onclick="setSiteUrl(this,'{{site.url}}')">{{site.name}}</span>
     {% endfor %}
   </div>
 
@@ -249,50 +249,50 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div>MEDIA VAULT v2.0</div>
     <div style="margin-top:4px;color:var(--text3)">Powered by yt-dlp</div>
     <div style="margin-top:4px;">
-      <span id="ytdlp-ver" style="color:var(--accent)">yt-dlp ready Ã¢Å“â€œ</span>
+      <span id="ytdlp-ver" style="color:var(--accent)">yt-dlp ready</span>
     </div>
   </div>
 </aside>
 
-<!-- Ã¢â€â‚¬Ã¢â€â‚¬ MAIN Ã¢â€â‚¬Ã¢â€â‚¬ -->
+<!-- ── MAIN ── -->
 <main class="main">
   <div class="topbar">
     <div class="tb-title">MEDIA <span>VAULT</span></div>
-    <span class="tag tag-teal">Ã°Å¸Å¸Â¢ LIVE</span>
+    <span class="tag tag-teal">LIVE</span>
     <div class="stats">
       <div class="stat"><div class="stat-val" id="cDl">0</div><div class="stat-lbl">DOWNLOADED</div></div>
       <div class="stat"><div class="stat-val" id="cSize">0 MB</div><div class="stat-lbl">SAVED</div></div>
     </div>
     <div class="tb-btns">
-      <button class="btn btn-ghost btn-sm" onclick="openFolder()">Ã°Å¸â€œâ€š Open Folder</button>
-      <button class="btn btn-ghost btn-sm" onclick="openShare(null)">Ã°Å¸â€â€” Share</button>
+      <button class="btn btn-ghost btn-sm" onclick="openFolder()">Open Folder</button>
+      <button class="btn btn-ghost btn-sm" onclick="openShare(null)">Share</button>
     </div>
   </div>
 
   <div class="content">
 
-    <!-- Ã¢â€¢ÂÃ¢â€¢Â DOWNLOAD Ã¢â€¢ÂÃ¢â€¢Â -->
+    <!-- ══ DOWNLOAD ══ -->
     <div class="sec active" id="sec-download">
       <div class="panel panel-teal">
         <div class="ph">
           <div>
-            <div class="pt">Ã¢Â¬â€¡Ã¯Â¸Â PASTE URL TO DOWNLOAD</div>
-            <div class="ps">Supports 1000+ websites Ã‚Â· Max quality Ã‚Â· No watermark</div>
+            <div class="pt">PASTE URL TO DOWNLOAD</div>
+            <div class="ps">Supports 1000+ websites - Max quality - No watermark</div>
           </div>
         </div>
         <div class="row" style="margin-bottom:12px;">
-          <input class="inp" id="urlInput" placeholder="https://www.deviantart.com/...  or YouTube, Twitter, Reddit, Instagram, TikTok, VimeoÃ¢â‚¬Â¦" style="flex:1;" />
-          <button class="btn btn-teal" onclick="analyze()">Ã°Å¸â€Â ANALYZE</button>
-          <button class="btn btn-ghost" onclick="clearAll()">Ã¢Å“â€¢</button>
+          <input class="inp" id="urlInput" placeholder="https://www.deviantart.com/...  or YouTube, Twitter, Reddit, Instagram, TikTok, Vimeo..." style="flex:1;" />
+          <button class="btn btn-teal" onclick="analyze()">ANALYZE</button>
+          <button class="btn btn-ghost" onclick="clearAll()">CLEAR</button>
         </div>
         <div class="row">
           <div class="sel-wrap">
             <select id="qualSel">
-              <option value="max">Ã°Å¸Ââ€  Max Quality</option>
+              <option value="max">Max Quality</option>
               <option value="4k">4K UHD</option>
               <option value="1080">1080p HD</option>
               <option value="720">720p</option>
-              <option value="audio">Ã°Å¸Å½Âµ Audio Only (MP3)</option>
+              <option value="audio">Audio Only (MP3)</option>
               <option value="original">Original RAW</option>
             </select>
           </div>
@@ -316,44 +316,44 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
       <!-- RESULT -->
       <div class="grid2" id="resultArea" style="display:none;">
-        <!-- LEFT: PREVIEW -->
+        <!-- LEFT: DOWNLOAD -->
         <div class="panel panel-teal">
           <div class="ph">
-            <div><div class="pt">Ã°Å¸â€“Â¼ PREVIEW</div><div class="ps" id="prevSub">Ã¢â‚¬â€</div></div>
+            <div><div class="pt">DOWNLOAD READY</div><div class="ps" id="prevSub">-</div></div>
             <span class="tag tag-teal" id="typeTag">MEDIA</span>
           </div>
           <div class="preview-box" id="prevBox">
-            <div class="prev-ph"><span class="ico">Ã°Å¸â€Â®</span>Preview loadingÃ¢â‚¬Â¦</div>
+            <div class="prev-ph"><span class="ico">DL</span>Preview disabled. The downloader will use the best real media source.</div>
           </div>
           <div id="dlProgressWrap" style="display:none;margin-top:12px;">
             <div style="display:flex;justify-content:space-between;font-size:11px;font-family:'Space Mono',monospace;margin-bottom:4px;">
-              <span id="dlStatus">StartingÃ¢â‚¬Â¦</span>
+              <span id="dlStatus">Starting...</span>
               <span id="dlPct">0%</span>
             </div>
             <div class="pbar"><div class="pfill" id="dlFill" style="width:0%"></div></div>
             <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;" id="dlSpeed"></div>
           </div>
           <div class="row" style="margin-top:14px;flex-wrap:wrap;">
-            <button class="btn btn-teal" id="dlBtn" onclick="download()">Ã¢Â¬â€¡Ã¯Â¸Â DOWNLOAD</button>
-            <button class="btn btn-purple" onclick="openShare(document.getElementById('urlInput').value)">Ã°Å¸â€â€” SHARE</button>
-            <button class="btn btn-ghost" onclick="copyUrl()">Ã°Å¸â€œâ€¹ COPY URL</button>
-            <button class="btn btn-ghost btn-sm" id="dlFileBtn" style="display:none;" onclick="downloadFile()">Ã°Å¸â€™Â¾ SAVE FILE</button>
+            <button class="btn btn-teal" id="dlBtn" onclick="download()">DOWNLOAD</button>
+            <button class="btn btn-purple" onclick="openShare(document.getElementById('urlInput').value)">SHARE</button>
+            <button class="btn btn-ghost" onclick="copyUrl()">COPY URL</button>
+            <button class="btn btn-ghost btn-sm" id="dlFileBtn" style="display:none;" onclick="downloadFile()">SAVE FILE</button>
           </div>
         </div>
 
         <!-- RIGHT: INFO -->
         <div class="panel panel-teal">
-          <div class="ph"><div><div class="pt">Ã°Å¸â€œÅ  MEDIA INFO</div><div class="ps">Detected metadata</div></div></div>
+          <div class="ph"><div><div class="pt">MEDIA INFO</div><div class="ps">Detected metadata</div></div></div>
           <div class="meta-grid">
-            <div class="meta-cell"><div class="mc-lbl">SITE</div><div class="mc-val" id="mSite">Ã¢â‚¬â€</div></div>
-            <div class="meta-cell"><div class="mc-lbl">TYPE</div><div class="mc-val" id="mType">Ã¢â‚¬â€</div></div>
-            <div class="meta-cell"><div class="mc-lbl">RESOLUTION</div><div class="mc-val" id="mRes">Ã¢â‚¬â€</div></div>
-            <div class="meta-cell"><div class="mc-lbl">DURATION</div><div class="mc-val" id="mDur">Ã¢â‚¬â€</div></div>
-            <div class="meta-cell"><div class="mc-lbl">UPLOADER</div><div class="mc-val" id="mUp">Ã¢â‚¬â€</div></div>
-            <div class="meta-cell"><div class="mc-lbl">VIEWS</div><div class="mc-val" id="mViews">Ã¢â‚¬â€</div></div>
+            <div class="meta-cell"><div class="mc-lbl">SITE</div><div class="mc-val" id="mSite">-</div></div>
+            <div class="meta-cell"><div class="mc-lbl">TYPE</div><div class="mc-val" id="mType">-</div></div>
+            <div class="meta-cell"><div class="mc-lbl">RESOLUTION</div><div class="mc-val" id="mRes">-</div></div>
+            <div class="meta-cell"><div class="mc-lbl">DURATION</div><div class="mc-val" id="mDur">-</div></div>
+            <div class="meta-cell"><div class="mc-lbl">UPLOADER</div><div class="mc-val" id="mUp">-</div></div>
+            <div class="meta-cell"><div class="mc-lbl">VIEWS</div><div class="mc-val" id="mViews">-</div></div>
           </div>
           <div style="margin-bottom:14px;">
-            <div class="pt" style="font-size:14px;margin-bottom:10px;">Ã¢Å¡â„¢Ã¯Â¸Â QUALITY</div>
+            <div class="pt" style="font-size:14px;margin-bottom:10px;">QUALITY</div>
             <div class="qchips">
               <div class="qchip sel" onclick="setQ(this,'max')">MAX<div class="qbadge">BEST</div></div>
               <div class="qchip" onclick="setQ(this,'4k')">4K</div>
@@ -363,7 +363,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
             </div>
           </div>
           <div>
-            <div class="pt" style="font-size:14px;margin-bottom:8px;">Ã°Å¸â€œÂ FILENAME</div>
+            <div class="pt" style="font-size:14px;margin-bottom:8px;">FILENAME</div>
             <input class="inp" id="fnInput" placeholder="Custom filename (optional)" style="font-size:11px;" />
           </div>
           <div style="margin-top:14px;">
@@ -380,24 +380,24 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div id="loadingArea" style="display:none;">
         <div class="panel" style="text-align:center;padding:40px;">
           <div class="spin" id="mainSpin" style="display:block;margin:0 auto 16px;"></div>
-          <div style="font-family:'Space Mono',monospace;font-size:13px;color:var(--accent);" id="loadMsg">Analyzing URLÃ¢â‚¬Â¦</div>
+          <div style="font-family:'Space Mono',monospace;font-size:13px;color:var(--accent);" id="loadMsg">Analyzing URL...</div>
           <div style="font-size:11px;color:var(--text3);margin-top:6px;">Fetching metadata via yt-dlp</div>
         </div>
       </div>
     </div>
 
-    <!-- Ã¢â€¢ÂÃ¢â€¢Â RANDOM Ã¢â€¢ÂÃ¢â€¢Â -->
+    <!-- ══ RANDOM ══ -->
     <div class="sec" id="sec-random">
 
       <!-- 18+ AGE GATE MODAL -->
       <div id="ageGateOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:2000;align-items:center;justify-content:center;backdrop-filter:blur(16px);">
         <div style="background:var(--surface);border:1px solid var(--accent2);border-radius:20px;padding:40px;max-width:400px;width:90%;text-align:center;">
-          <div style="font-size:60px;margin-bottom:16px;">Ã°Å¸â€Å¾</div>
+          <div style="font-size:60px;margin-bottom:16px;">🔞</div>
           <div style="font-family:'Bebas Neue',cursive;font-size:32px;letter-spacing:4px;color:var(--accent2);margin-bottom:10px;">AGE VERIFICATION</div>
           <div style="font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.6;">This section contains adult / mature content from DeviantArt.<br>You must be <strong>18 years or older</strong> to continue.</div>
           <div style="display:flex;gap:12px;justify-content:center;">
-            <button class="btn btn-red" onclick="confirmAge(true)" style="font-size:13px;padding:14px 28px;">Ã¢Å“â€¦ I AM 18+</button>
-            <button class="btn btn-ghost" onclick="confirmAge(false)" style="font-size:13px;padding:14px 28px;">Ã¢Å“â€¢ Go Back</button>
+            <button class="btn btn-red" onclick="confirmAge(true)" style="font-size:13px;padding:14px 28px;">✅ I AM 18+</button>
+            <button class="btn btn-ghost" onclick="confirmAge(false)" style="font-size:13px;padding:14px 28px;">✕ Go Back</button>
           </div>
           <div style="margin-top:16px;font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;">By clicking "I AM 18+" you confirm you are of legal age in your region.</div>
         </div>
@@ -406,41 +406,41 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="panel panel-purple" style="background:linear-gradient(135deg,rgba(124,92,252,.06),rgba(0,245,196,.04));">
         <div class="ph">
           <div>
-            <div class="pt" style="font-size:26px;font-family:'Bebas Neue';letter-spacing:4px;">Ã°Å¸Å½Â² RANDOM DISCOVERY</div>
-            <div class="ps">Live scraping from DeviantArt Ã‚Â· Real images & videos fetched fresh</div>
+            <div class="pt" style="font-size:26px;font-family:'Bebas Neue';letter-spacing:4px;">🎲 RANDOM DISCOVERY</div>
+            <div class="ps">Live scraping from DeviantArt · Real images & videos fetched fresh</div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
             <div class="tog-wrap" id="matureToggleWrap" onclick="toggleMature()" style="border-color:var(--accent2);">
               <div class="tog" id="matureTog"></div>
-              <span style="color:var(--accent2);font-size:11px;">Ã°Å¸â€Å¾ 18+ Mode</span>
+              <span style="color:var(--accent2);font-size:11px;">🔞 18+ Mode</span>
             </div>
           </div>
         </div>
 
         <div class="rand-grid">
           <div class="rand-card" onclick="fetchRandom('art')">
-            <span class="rc-ico">Ã°Å¸Å½Â¨</span>
+            <span class="rc-ico">🎨</span>
             <h3>RANDOM ART</h3>
-            <p>Live fetch from DeviantArt Ã¢â‚¬â€ digital art, illustrations, concept art</p>
-            <div style="margin-top:10px;" class="tag tag-teal">LIVE Ã‚Â· DEVIANTART</div>
+            <p>Live fetch from DeviantArt — digital art, illustrations, concept art</p>
+            <div style="margin-top:10px;" class="tag tag-teal">LIVE · DEVIANTART</div>
           </div>
           <div class="rand-card" onclick="fetchRandom('video')">
-            <span class="rc-ico">Ã°Å¸Å½Â¬</span>
+            <span class="rc-ico">🎬</span>
             <h3>RANDOM VIDEO</h3>
-            <p>Animations, MMD, 3D renders, motion graphics Ã¢â‚¬â€ real videos from DA</p>
-            <div style="margin-top:10px;" class="tag tag-red">LIVE Ã‚Â· ANIMATION Ã‚Â· MMD</div>
+            <p>Animations, MMD, 3D renders, motion graphics — real videos from DA</p>
+            <div style="margin-top:10px;" class="tag tag-red">LIVE · ANIMATION · MMD</div>
           </div>
           <div class="rand-card" onclick="fetchRandom('wallpaper')">
-            <span class="rc-ico">Ã°Å¸â€“Â¼</span>
+            <span class="rc-ico">🖼</span>
             <h3>RANDOM WALLPAPER</h3>
-            <p>HD wallpapers scraped live Ã¢â‚¬â€ space, fantasy, dark, minimal, 4K</p>
-            <div style="margin-top:10px;" class="tag tag-gold">LIVE Ã‚Â· 4K Ã‚Â· ULTRA HD</div>
+            <p>HD wallpapers scraped live — space, fantasy, dark, minimal, 4K</p>
+            <div style="margin-top:10px;" class="tag tag-gold">LIVE · 4K · ULTRA HD</div>
           </div>
           <div class="rand-card" onclick="clickMature()" id="matureCard" style="border-color:rgba(255,62,108,.2);">
-            <span class="rc-ico">Ã°Å¸â€Å¾</span>
+            <span class="rc-ico">🔞</span>
             <h3>MATURE CONTENT</h3>
             <p>Adult / mature art from DeviantArt. Age verification required.</p>
-            <div style="margin-top:10px;" class="tag tag-red">18+ ONLY Ã‚Â· AGE GATE</div>
+            <div style="margin-top:10px;" class="tag tag-red">18+ ONLY · AGE GATE</div>
           </div>
         </div>
       </div>
@@ -448,13 +448,13 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <!-- RESULT PANEL -->
       <div class="panel panel-purple" id="randResultPanel" style="display:none;">
         <div class="ph">
-          <div><div class="pt">Ã°Å¸Å½Â² RANDOM PICK</div><div class="ps" id="randSrc">Fetching from DeviantArtÃ¢â‚¬Â¦</div></div>
+          <div><div class="pt">🎲 RANDOM PICK</div><div class="ps" id="randSrc">Fetching from DeviantArt…</div></div>
           <span class="tag tag-purple" id="randTag">LOADING</span>
         </div>
         <!-- Loading state -->
         <div id="randLoadState" style="text-align:center;padding:40px;">
           <div class="spin" style="display:block;margin:0 auto 16px;"></div>
-          <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--accent);" id="randLoadMsg">Scraping DeviantArtÃ¢â‚¬Â¦</div>
+          <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--accent);" id="randLoadMsg">Scraping DeviantArt…</div>
         </div>
         <!-- Result state -->
         <div id="randContentState" style="display:none;">
@@ -462,14 +462,14 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
             <div>
               <div class="preview-box" id="randPrev" style="min-height:220px;"></div>
               <div class="row" style="margin-top:12px;flex-wrap:wrap;">
-                <button class="btn btn-teal" id="randDlBtn" onclick="dlRandom()">Ã¢Â¬â€¡Ã¯Â¸Â DOWNLOAD THIS</button>
-                <button class="btn btn-ghost" onclick="openInDA()">Ã°Å¸â€â€” Open on DA</button>
-                <button class="btn btn-ghost" onclick="rollAgain()">Ã°Å¸Å½Â² ROLL AGAIN</button>
+                <button class="btn btn-teal" id="randDlBtn" onclick="dlRandom()">⬇️ DOWNLOAD THIS</button>
+                <button class="btn btn-ghost" onclick="openInDA()">🔗 Open on DA</button>
+                <button class="btn btn-ghost" onclick="rollAgain()">🎲 ROLL AGAIN</button>
                 <button class="btn btn-ghost" id="slideshowBtn" onclick="toggleSlideshow()" title="Auto-advance to next random pick">
-                  Ã¢â€“Â¶ SLIDESHOW
+                  ▶ SLIDESHOW
                 </button>
                 <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);font-family:'Space Mono',monospace;">
-                  <span>Ã¢ÂÂ±</span>
+                  <span>⏱</span>
                   <select id="slideshowSpeed" onchange="slideshowSecs=+this.value" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;">
                     <option value="10">10s</option>
                     <option value="15" selected>15s</option>
@@ -483,15 +483,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
             </div>
             <div>
               <div class="meta-grid">
-                <div class="meta-cell"><div class="mc-lbl">TITLE</div><div class="mc-val" id="rTitle">Ã¢â‚¬â€</div></div>
-                <div class="meta-cell"><div class="mc-lbl">AUTHOR</div><div class="mc-val" id="rAuthor">Ã¢â‚¬â€</div></div>
-                <div class="meta-cell"><div class="mc-lbl">SOURCE</div><div class="mc-val" id="rSite">Ã¢â‚¬â€</div></div>
-                <div class="meta-cell"><div class="mc-lbl">TYPE</div><div class="mc-val" id="rType">Ã¢â‚¬â€</div></div>
-                <div class="meta-cell"><div class="mc-lbl">TAG</div><div class="mc-val" id="rTag">Ã¢â‚¬â€</div></div>
+                <div class="meta-cell"><div class="mc-lbl">TITLE</div><div class="mc-val" id="rTitle">—</div></div>
+                <div class="meta-cell"><div class="mc-lbl">AUTHOR</div><div class="mc-val" id="rAuthor">—</div></div>
+                <div class="meta-cell"><div class="mc-lbl">SOURCE</div><div class="mc-val" id="rSite">—</div></div>
+                <div class="meta-cell"><div class="mc-lbl">TYPE</div><div class="mc-val" id="rType">—</div></div>
+                <div class="meta-cell"><div class="mc-lbl">TAG</div><div class="mc-val" id="rTag">—</div></div>
                 <div class="meta-cell"><div class="mc-lbl">STATUS</div><div class="mc-val" id="rStatus">Ready</div></div>
               </div>
               <div style="margin-top:12px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:11px;font-family:'Space Mono',monospace;color:var(--text3);">
-                Ã¢â€žÂ¹Ã¯Â¸Â Random picks are fetched live from DeviantArt.<br>Videos download via yt-dlp. Images download directly.
+                ℹ️ Random picks are fetched live from DeviantArt.<br>Videos download via yt-dlp. Images download directly.
               </div>
             </div>
           </div>
@@ -499,78 +499,78 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       </div>
     </div>
 
-    <!-- Ã¢â€¢ÂÃ¢â€¢Â BATCH Ã¢â€¢ÂÃ¢â€¢Â -->
+    <!-- ══ BATCH ══ -->
     <div class="sec" id="sec-batch">
       <div class="panel panel-gold">
         <div class="ph">
-          <div><div class="pt">Ã°Å¸â€œÂ¦ BATCH DOWNLOADER</div><div class="ps">Paste multiple URLs Ã¢â‚¬â€ one per line</div></div>
-          <button class="btn btn-teal" onclick="runBatch()">Ã¢â€“Â¶ RUN ALL</button>
+          <div><div class="pt">📦 BATCH DOWNLOADER</div><div class="ps">Paste multiple URLs — one per line</div></div>
+          <button class="btn btn-teal" onclick="runBatch()">▶ RUN ALL</button>
         </div>
-        <textarea id="batchIn" class="inp" placeholder="https://www.deviantart.com/...&#10;https://www.youtube.com/watch?v=...&#10;https://twitter.com/user/status/...&#10;https://www.reddit.com/r/..." style="min-height:140px;resize:vertical;line-height:1.8;"></textarea>
+        <textarea id="batchIn" class="inp" placeholder="https://www.deviantart.com/...&#10;https://www.youtube.com/watchCLEARv=...&#10;https://twitter.com/user/status/...&#10;https://www.reddit.com/r/..." style="min-height:140px;resize:vertical;line-height:1.8;"></textarea>
         <div class="row" style="margin-top:12px;">
           <div class="sel-wrap"><select id="batchQual"><option value="max">Max Quality</option><option value="1080">1080p</option><option value="audio">Audio Only</option></select></div>
           <div class="tog-wrap" onclick="toggle('batchWM')"><div class="tog on" id="batchWM"></div><span>No Watermark</span></div>
         </div>
       </div>
       <div class="panel">
-        <div class="pt" style="font-size:16px;margin-bottom:14px;">Ã°Å¸â€œâ€¹ QUEUE</div>
+        <div class="pt" style="font-size:16px;margin-bottom:14px;">📋 QUEUE</div>
         <div class="pbar"><div class="pfill" id="batchFill" style="width:0%"></div></div>
         <div style="display:flex;justify-content:space-between;font-size:11px;font-family:'Space Mono',monospace;margin-bottom:12px;">
           <span id="batchStat">Idle</span><span id="batchCnt">0/0</span>
         </div>
         <div class="file-list" id="batchQueue">
-          <div style="text-align:center;padding:30px;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;">Queue empty Ã‚Â· Paste URLs above</div>
+          <div style="text-align:center;padding:30px;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;">Queue empty · Paste URLs above</div>
         </div>
       </div>
     </div>
 
-    <!-- Ã¢â€¢ÂÃ¢â€¢Â FILES Ã¢â€¢ÂÃ¢â€¢Â -->
+    <!-- ══ FILES ══ -->
     <div class="sec" id="sec-files">
       <div class="panel panel-teal">
         <div class="ph">
-          <div><div class="pt">Ã°Å¸â€œÂ MY DOWNLOADS</div><div class="ps" id="fileCount">LoadingÃ¢â‚¬Â¦</div></div>
+          <div><div class="pt">📁 MY DOWNLOADS</div><div class="ps" id="fileCount">Loading…</div></div>
           <div class="row">
-            <button class="btn btn-ghost btn-sm" onclick="loadFiles()">Ã°Å¸â€â€ž Refresh</button>
-            <button class="btn btn-ghost btn-sm" onclick="openFolder()">Ã°Å¸â€œâ€š Open Folder</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadFiles()">🔄 Refresh</button>
+            <button class="btn btn-ghost btn-sm" onclick="openFolder()">📂 Open Folder</button>
           </div>
         </div>
         <div class="file-list" id="filesList">
-          <div class="prev-ph" style="padding:40px;"><span class="ico">Ã°Å¸â€œâ€š</span>Loading filesÃ¢â‚¬Â¦</div>
+          <div class="prev-ph" style="padding:40px;"><span class="ico">📂</span>Loading files…</div>
         </div>
       </div>
     </div>
 
-    <!-- Ã¢â€¢ÂÃ¢â€¢Â HISTORY Ã¢â€¢ÂÃ¢â€¢Â -->
+    <!-- ══ HISTORY ══ -->
     <div class="sec" id="sec-history">
       <div class="panel panel-teal">
         <div class="ph">
-          <div><div class="pt">Ã°Å¸â€¢â€œ HISTORY</div><div class="ps" id="histCount">0 downloads</div></div>
-          <button class="btn btn-ghost btn-sm" onclick="clearHist()">Ã°Å¸â€”â€˜ Clear</button>
+          <div><div class="pt">🕓 HISTORY</div><div class="ps" id="histCount">0 downloads</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="clearHist()">🗑 Clear</button>
         </div>
         <div class="file-list" id="histList">
-          <div style="text-align:center;padding:40px;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;"><div style="font-size:36px;margin-bottom:10px;">Ã°Å¸â€œâ€š</div>No downloads yet</div>
+          <div style="text-align:center;padding:40px;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;"><div style="font-size:36px;margin-bottom:10px;">📂</div>No downloads yet</div>
         </div>
       </div>
     </div>
 
 
-    <!-- Ã¢â€¢ÂÃ¢â€¢Â AUTO 24/7 Ã¢â€¢ÂÃ¢â€¢Â -->
+    <!-- ══ AUTO 24/7 ══ -->
     <div class="sec" id="sec-auto">
 
       <!-- HEADER PANEL -->
       <div class="panel" style="background:linear-gradient(135deg,rgba(255,62,108,.08),rgba(124,92,252,.06));border-color:rgba(255,62,108,.3);">
         <div class="ph">
           <div>
-            <div class="pt" style="font-size:26px;font-family:'Bebas Neue';letter-spacing:4px;">Ã°Å¸Â¤â€“ AUTO DOWNLOADER Ã¢â‚¬â€ 24/7</div>
-            <div class="ps">Continuously downloads anime, wallpapers, mature art, 18+ videos at max quality Ã¢â‚¬â€ forever</div>
+            <div class="pt" style="font-size:26px;font-family:'Bebas Neue';letter-spacing:4px;">🤖 AUTO DOWNLOADER — 24/7</div>
+            <div class="ps">Continuously downloads anime, wallpapers, mature art, 18+ videos at max quality — forever</div>
           </div>
           <div style="display:flex;gap:10px;align-items:center;">
             <button class="btn" id="autoStartBtn" onclick="autoStart()"
               style="background:linear-gradient(135deg,#00f5c4,#7c5cfc);color:#0a0a12;font-weight:700;min-width:120px;">
-              Ã¢â€“Â¶ START 24/7
+              ▶ START 24/7
             </button>
-            <button class="btn btn-ghost" id="autoPauseBtn" onclick="autoPause()" style="display:none;">Ã¢ÂÂ¸ PAUSE</button>
-            <button class="btn btn-ghost" id="autoStopBtn"  onclick="autoStop()"  style="display:none;">Ã¢ÂÂ¹ STOP</button>
+            <button class="btn btn-ghost" id="autoPauseBtn" onclick="autoPause()" style="display:none;">⏸ PAUSE</button>
+            <button class="btn btn-ghost" id="autoStopBtn"  onclick="autoStop()"  style="display:none;">⏹ STOP</button>
           </div>
         </div>
 
@@ -590,20 +590,20 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <!-- CURRENT DOWNLOAD -->
         <div id="autoCurrentWrap" style="display:none;margin-top:10px;padding:10px 14px;
           background:rgba(0,245,196,.05);border:1px solid rgba(0,245,196,.15);border-radius:8px;">
-          <div style="font-size:10px;font-family:'Space Mono',monospace;color:var(--accent);margin-bottom:4px;">Ã¢Â¬â€¡ NOW DOWNLOADING</div>
+          <div style="font-size:10px;font-family:'Space Mono',monospace;color:var(--accent);margin-bottom:4px;">⬇ NOW DOWNLOADING</div>
           <div id="autoCurrentTxt" style="font-size:13px;color:var(--text);"></div>
         </div>
       </div>
 
       <!-- GENRE TOGGLES -->
       <div class="panel">
-        <div class="pt" style="font-size:15px;margin-bottom:14px;">Ã°Å¸Å½â€º GENRE SELECTOR Ã¢â‚¬â€ toggle what gets downloaded</div>
+        <div class="pt" style="font-size:15px;margin-bottom:14px;">🎛 GENRE SELECTOR — toggle what gets downloaded</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;" id="genreGrid">
           <!-- filled by JS -->
         </div>
         <div style="margin-top:12px;">
-          <button class="btn btn-ghost btn-sm" onclick="autoSelectAll()">Ã¢Å“â€¦ All On</button>
-          <button class="btn btn-ghost btn-sm" onclick="autoSelectNone()">Ã¢Â¬Å“ All Off</button>
+          <button class="btn btn-ghost btn-sm" onclick="autoSelectAll()">✅ All On</button>
+          <button class="btn btn-ghost btn-sm" onclick="autoSelectNone()">⬜ All Off</button>
         </div>
       </div>
 
@@ -612,8 +612,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="panel" style="border-color:rgba(0,136,204,.3);background:linear-gradient(135deg,rgba(0,136,204,.05),rgba(0,0,0,0));">
         <div class="ph">
           <div>
-            <div class="pt" style="font-size:15px;">Ã°Å¸â€œÂ² PERMANENT STORAGE Ã¢â‚¬â€ Telegram</div>
-            <div class="ps">Every download is instantly sent to your Telegram channel Ã¢â‚¬â€ survives server restarts forever</div>
+            <div class="pt" style="font-size:15px;">📲 PERMANENT STORAGE — Telegram</div>
+            <div class="ps">Every download is instantly sent to your Telegram channel — survives server restarts forever</div>
           </div>
           <span id="tgStatusBadge" style="font-family:'Space Mono',monospace;font-size:10px;padding:4px 10px;
             border-radius:6px;background:var(--bg);border:1px solid var(--border);color:var(--text3);">
@@ -624,16 +624,16 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;" id="tgSetupPanel">
           <div>
             <div style="font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);margin-bottom:6px;">
-              Ã¢â€˜Â  Go to @BotFather on Telegram Ã¢â€ â€™ /newbot Ã¢â€ â€™ copy token
+              ① Go to @BotFather on Telegram → /newbot → copy token
             </div>
             <div style="font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);margin-bottom:6px;">
-              Ã¢â€˜Â¡ Create a channel Ã¢â€ â€™ add your bot as Admin
+              ② Create a channel → add your bot as Admin
             </div>
             <div style="font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);margin-bottom:6px;">
-              Ã¢â€˜Â¢ Get chat ID from @userinfobot
+              ③ Get chat ID from @userinfobot
             </div>
             <div style="font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);">
-              Ã¢â€˜Â£ Add both to Railway Ã¢â€ â€™ Variables tab
+              ④ Add both to Railway → Variables tab
             </div>
           </div>
           <div style="background:var(--bg);border-radius:8px;padding:12px;font-family:'Space Mono',monospace;font-size:11px;">
@@ -646,8 +646,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         </div>
 
         <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap;">
-          <button class="btn btn-ghost btn-sm" onclick="tgTest()">Ã°Å¸â€â€ Send Test Message</button>
-          <button class="btn btn-ghost btn-sm" onclick="tgRefresh()">Ã°Å¸â€â€ž Check Status</button>
+          <button class="btn btn-ghost btn-sm" onclick="tgTest()">🔔 Send Test Message</button>
+          <button class="btn btn-ghost btn-sm" onclick="tgRefresh()">🔄 Check Status</button>
           <span id="tgQueueTxt" style="font-size:11px;font-family:'Space Mono',monospace;color:var(--text3);"></span>
         </div>
       </div>
@@ -655,8 +655,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <!-- DOWNLOAD LOG -->
       <div class="panel">
         <div class="ph">
-          <div class="pt" style="font-size:15px;">Ã°Å¸â€œâ€¹ DOWNLOAD LOG</div>
-          <button class="btn btn-ghost btn-sm" onclick="autoClearLog()">Ã°Å¸â€”â€˜ Clear</button>
+          <div class="pt" style="font-size:15px;">📋 DOWNLOAD LOG</div>
+          <button class="btn btn-ghost btn-sm" onclick="autoClearLog()">🗑 Clear</button>
         </div>
         <div class="file-list" id="autoLog" style="max-height:400px;overflow-y:auto;">
           <div style="text-align:center;padding:30px;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;">
@@ -670,106 +670,106 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </main>
 </div>
 
-<!-- Ã¢â€â‚¬Ã¢â€â‚¬ SHARE MODAL Ã¢â€â‚¬Ã¢â€â‚¬ -->
+<!-- ── SHARE MODAL ── -->
 <div class="overlay" id="shareOverlay">
   
 <!-- STATS SECTION -->
 <div class="sec" id="sec-stats">
-  <div class="sec-head">Ã°Å¸â€œÅ  Stats & Controls</div>
+  <div class="sec-head">📊 Stats & Controls</div>
 
   <!-- KPI cards -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;" id="statsCards">
     <div class="stat-card" id="sc-files">
-      <div class="sc-val" id="scFiles">Ã¢â‚¬â€</div><div class="sc-lbl">FILES</div></div>
+      <div class="sc-val" id="scFiles">—</div><div class="sc-lbl">FILES</div></div>
     <div class="stat-card" id="sc-size">
-      <div class="sc-val" id="scSize">Ã¢â‚¬â€</div><div class="sc-lbl">SAVED</div></div>
+      <div class="sc-val" id="scSize">—</div><div class="sc-lbl">SAVED</div></div>
     <div class="stat-card" id="sc-videos">
-      <div class="sc-val" id="scVideos">Ã¢â‚¬â€</div><div class="sc-lbl">VIDEOS</div></div>
+      <div class="sc-val" id="scVideos">—</div><div class="sc-lbl">VIDEOS</div></div>
     <div class="stat-card" id="sc-images">
-      <div class="sc-val" id="scImages">Ã¢â‚¬â€</div><div class="sc-lbl">IMAGES</div></div>
+      <div class="sc-val" id="scImages">—</div><div class="sc-lbl">IMAGES</div></div>
     <div class="stat-card" id="sc-speed">
-      <div class="sc-val" id="scSpeed">Ã¢â‚¬â€</div><div class="sc-lbl">KB/MIN</div></div>
+      <div class="sc-val" id="scSpeed">—</div><div class="sc-lbl">KB/MIN</div></div>
     <div class="stat-card" id="sc-errors">
-      <div class="sc-val" id="scErrors">Ã¢â‚¬â€</div><div class="sc-lbl">ERRORS</div></div>
+      <div class="sc-val" id="scErrors">—</div><div class="sc-lbl">ERRORS</div></div>
   </div>
 
   <!-- 7-day bar chart -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
-    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:12px;">Ã°Å¸â€œâ€¦ LAST 7 DAYS</div>
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:12px;">📅 LAST 7 DAYS</div>
     <div id="barChart" style="display:flex;align-items:flex-end;gap:6px;height:80px;"></div>
     <div id="barLabels" style="display:flex;gap:6px;margin-top:4px;"></div>
   </div>
 
   <!-- Top genres pie-style -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
-    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">Ã°Å¸Å½Â¯ TOP GENRES</div>
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">🎯 TOP GENRES</div>
     <div id="genreStats"></div>
   </div>
 
   <!-- Top sources -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
-    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">Ã°Å¸â€œÂ¡ TOP SOURCES</div>
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;">📡 TOP SOURCES</div>
     <div id="sourceStats"></div>
   </div>
 
   <!-- Blacklist -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
-    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;">Ã°Å¸Å¡Â« TAG BLACKLIST</div>
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;">🚫 TAG BLACKLIST</div>
     <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Auto-downloader skips any tag matching these keywords.</div>
     <div id="blacklistTags" style="margin-bottom:10px;min-height:28px;"></div>
     <div style="display:flex;gap:8px;margin-bottom:8px;">
       <input id="blInput" class="inp" placeholder="Add tag (e.g. gore, scat, loli)" style="flex:1;font-size:11px;padding:8px 12px;">
-      <button class="btn btn-teal btn-sm" onclick="blAdd()" style="padding:8px 14px;">Ã¢Å¾â€¢</button>
+      <button class="btn btn-teal btn-sm" onclick="blAdd()" style="padding:8px 14px;">➕</button>
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="btn btn-ghost btn-sm" onclick="clearSeen()" style="flex:1;font-size:10px;">Ã°Å¸â€â€ž Reset Duplicates (<span id="seenCount">0</span> seen)</button>
-      <button class="btn btn-ghost btn-sm" onclick="statsReset()" style="flex:1;font-size:10px;color:var(--accent2);">Ã°Å¸â€”â€˜ Reset Stats</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearSeen()" style="flex:1;font-size:10px;">🔄 Reset Duplicates (<span id="seenCount">0</span> seen)</button>
+      <button class="btn btn-ghost btn-sm" onclick="statsReset()" style="flex:1;font-size:10px;color:var(--accent2);">🗑 Reset Stats</button>
     </div>
   </div>
 </div>
 
 <!-- TG LIBRARY SECTION -->
 <div class="sec" id="sec-tglib">
-  <div class="sec-head">Ã¢Å“Ë†Ã¯Â¸Â Telegram Library <span style="font-size:10px;color:var(--text3);font-weight:400;">Ã¢â‚¬â€ permanent storage</span></div>
+  <div class="sec-head">✈️ Telegram Library <span style="font-size:10px;color:var(--text3);font-weight:400;">— permanent storage</span></div>
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;">
     <div style="font-size:10px;color:var(--text3);margin-bottom:10px;">Every downloaded file is stored in Telegram permanently. Files survive Railway restarts, redeploys, and wipes.</div>
     <div style="display:flex;gap:8px;margin-bottom:12px;">
-      <button class="btn btn-teal btn-sm" onclick="tgLibLoad()" style="flex:1;">Ã°Å¸â€â€ž Refresh</button>
-      <button class="btn btn-ghost btn-sm" onclick="tgLibRebuild()" style="flex:1;">Ã°Å¸â€Æ’ Rebuild from TG</button>
+      <button class="btn btn-teal btn-sm" onclick="tgLibLoad()" style="flex:1;">🔄 Refresh</button>
+      <button class="btn btn-ghost btn-sm" onclick="tgLibRebuild()" style="flex:1;">🔃 Rebuild from TG</button>
     </div>
     <div id="tgLibStats" style="font-size:10px;color:var(--text3);margin-bottom:10px;"></div>
   </div>
   <div id="tgLibGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
   <div style="display:flex;justify-content:center;gap:8px;margin-top:14px;">
-    <button class="btn btn-ghost btn-sm" id="tgLibPrevBtn" onclick="tgLibPage(-1)" style="display:none;">Ã¢â€”â‚¬ Prev</button>
+    <button class="btn btn-ghost btn-sm" id="tgLibPrevBtn" onclick="tgLibPage(-1)" style="display:none;">◀ Prev</button>
     <span id="tgLibPageInfo" style="font-size:10px;color:var(--text3);padding:6px 10px;"></span>
-    <button class="btn btn-ghost btn-sm" id="tgLibNextBtn" onclick="tgLibPage(1)" style="display:none;">Next Ã¢â€“Â¶</button>
+    <button class="btn btn-ghost btn-sm" id="tgLibNextBtn" onclick="tgLibPage(1)" style="display:none;">Next ▶</button>
   </div>
 </div>
 
 <!-- SOURCES SECTION -->
 <div class="sec" id="sec-sources">
-  <div class="sec-head">Ã°Å¸Å’Â Source &amp; Telegram Settings</div>
+  <div class="sec-head">🌐 Source &amp; Telegram Settings</div>
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">
-    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:12px;">Ã°Å¸â€œÂ¡ CONTENT SOURCES</div>
-    <div style="font-size:10px;color:var(--text3);margin-bottom:12px;">Select which websites to pull content from. All use public APIs Ã¢â‚¬â€ no IP blocking.</div>
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:12px;">📡 CONTENT SOURCES</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:12px;">Select which websites to pull content from. All use public APIs — no IP blocking.</div>
     <div id="sourceGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;"></div>
-    <button class="btn btn-teal btn-sm" onclick="saveSources()" style="width:100%;">Ã°Å¸â€™Â¾ Save Source Settings</button>
+    <button class="btn btn-teal btn-sm" onclick="saveSources()" style="width:100%;">💾 Save Source Settings</button>
   </div>
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">
-    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:12px;">Ã¢Å“Ë†Ã¯Â¸Â TELEGRAM CHANNELS</div>
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:12px;">✈️ TELEGRAM CHANNELS</div>
     <div style="font-size:10px;color:var(--text3);margin-bottom:12px;">Add multiple Telegram channels. Select which one receives downloads.</div>
     <div id="tgChannelList" style="margin-bottom:12px;"></div>
     <div style="background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border);">
-      <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">Ã¢Å¾â€¢ ADD NEW CHANNEL</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">➕ ADD NEW CHANNEL</div>
       <input id="tgChName"   class="inp" placeholder="Channel name (e.g. Anime)" style="margin-bottom:6px;font-size:11px;padding:8px 12px;">
       <input id="tgChChatId" class="inp" placeholder="Chat ID (e.g. -1001234567890)" style="margin-bottom:6px;font-size:11px;padding:8px 12px;">
       <input id="tgChToken"  class="inp" placeholder="Bot token (leave blank to use default)" style="margin-bottom:8px;font-size:11px;padding:8px 12px;">
-      <button class="btn btn-teal btn-sm" onclick="addTgChannel()" style="width:100%;">Ã¢Å¾â€¢ Add Channel</button>
+      <button class="btn btn-teal btn-sm" onclick="addTgChannel()" style="width:100%;">➕ Add Channel</button>
     </div>
   </div>
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">
-    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:12px;">Ã°Å¸â€Â SITE COOKIES</div>
+    <div style="font-size:11px;color:var(--accent);letter-spacing:1px;margin-bottom:12px;">🔐 SITE COOKIES</div>
     <div style="font-size:10px;color:var(--text3);margin-bottom:12px;">Paste cookies from your browser for login-gated sites. Saved cookies are used before browser-cookie fallback and show up in the strategy log.</div>
     <div class="row" style="margin-bottom:8px;">
       <input id="cookieDomain" class="inp" placeholder="Domain (e.g. deviantart.com)" style="flex:1;font-size:11px;padding:8px 12px;" oninput="updateCookieGuideText(this.value)">
@@ -793,33 +793,33 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 <div class="modal" style="position:relative;">
-    <button class="modal-close" onclick="closeModal()">Ã¢Å“â€¢</button>
-    <h2>Ã°Å¸â€â€” SHARE LINK</h2>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h2>🔗 SHARE LINK</h2>
     <div style="font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:12px;">Share this media anywhere</div>
     <div class="row">
       <input class="inp" id="shareInput" readonly style="flex:1;color:var(--accent);font-size:11px;"/>
       <button class="btn btn-teal btn-sm" onclick="copyShare()">COPY</button>
     </div>
     <div class="share-plat">
-      <div class="spl-btn" onclick="share('whatsapp')">Ã°Å¸â€™Â¬<span>WhatsApp</span></div>
-      <div class="spl-btn" onclick="share('telegram')">Ã¢Å“Ë†Ã¯Â¸Â<span>Telegram</span></div>
-      <div class="spl-btn" onclick="share('twitter')">Ã°Å¸ÂÂ¦<span>Twitter</span></div>
-      <div class="spl-btn" onclick="share('reddit')">Ã°Å¸â€Â´<span>Reddit</span></div>
-      <div class="spl-btn" onclick="share('discord')">Ã°Å¸Å½Â®<span>Discord</span></div>
-      <div class="spl-btn" onclick="share('facebook')">Ã°Å¸â€œËœ<span>Facebook</span></div>
-      <div class="spl-btn" onclick="share('email')">Ã°Å¸â€œÂ§<span>Email</span></div>
-      <div class="spl-btn" onclick="nativeShare()">Ã°Å¸â€œÂ¤<span>More</span></div>
+      <div class="spl-btn" onclick="share('whatsapp')">💬<span>WhatsApp</span></div>
+      <div class="spl-btn" onclick="share('telegram')">✈️<span>Telegram</span></div>
+      <div class="spl-btn" onclick="share('twitter')">🐦<span>Twitter</span></div>
+      <div class="spl-btn" onclick="share('reddit')">🔴<span>Reddit</span></div>
+      <div class="spl-btn" onclick="share('discord')">🎮<span>Discord</span></div>
+      <div class="spl-btn" onclick="share('facebook')">📘<span>Facebook</span></div>
+      <div class="spl-btn" onclick="share('email')">📧<span>Email</span></div>
+      <div class="spl-btn" onclick="nativeShare()">📤<span>More</span></div>
     </div>
   </div>
 </div>
 
-<!-- Ã¢â€â‚¬Ã¢â€â‚¬ NOTIFICATION Ã¢â€â‚¬Ã¢â€â‚¬ -->
-<div id="notif"><span id="nIco">Ã¢Å“â€¦</span><span id="nMsg">Done!</span></div>
+<!-- ── NOTIFICATION ── -->
+<div id="notif"><span id="nIco">✅</span><span id="nMsg">Done!</span></div>
 
 <script>
-// Ã¢â€â‚¬Ã¢â€â‚¬ STATE Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── STATE ──────────────────────────────────────────────────────
 const S = { dlCount:0, totalBytes:0, currentDlId:null, quality:'max', randUrl:null, lastRand:null };
-// Slideshow + random state Ã¢â‚¬â€ declared at top so all functions can access them
+// Slideshow + random state — declared at top so all functions can access them
 let slideshowActive = false;
 let slideshowTimer  = null;
 let slideshowSecs   = 15;
@@ -829,10 +829,10 @@ let nTimer;
 let cookieGuides    = {};
 let savedCookieDomains = [];
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ NAVIGATION Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── NAVIGATION ────────────────────────────────────────────────
 
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ NOTIFY Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── NOTIFY ────────────────────────────────────────────────────
 function notify(msg, ico='OK', dur=3000) {
   document.getElementById('nMsg').textContent = msg;
   document.getElementById('nIco').textContent = ico;
@@ -853,7 +853,7 @@ function escapeHtml(value='') {
 }
 
 function normalizeCookieDomain(value='') {
-  return String(value).trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').split('/')[0];
+  return String(value).trim().toLowerCase().replace(/^httpsCLEAR:\/\//,'').replace(/^www\./,'').split('/')[0];
 }
 
 function renderStrategyLog(entries) {
@@ -865,8 +865,8 @@ function renderStrategyLog(entries) {
   }
   box.innerHTML = entries.map(entry => {
     const level = entry.level || 'info';
-    const color = level === 'error' ? 'var(--accent2)' : (level === 'warn' ? 'var(--accent4)' : 'var(--accent)');
-    const ts = entry.ts ? new Date(entry.ts * 1000).toLocaleTimeString() : '--:--:--';
+    const color = level === 'error' CLEAR 'var(--accent2)' : (level === 'warn' CLEAR 'var(--accent4)' : 'var(--accent)');
+    const ts = entry.ts CLEAR new Date(entry.ts * 1000).toLocaleTimeString() : '--:--:--';
     return `<div style="padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
       <div style="display:flex;justify-content:space-between;gap:10px;font-size:10px;font-family:'Space Mono',monospace;">
         <span style="color:${color};text-transform:uppercase;">${escapeHtml(level)}</span>
@@ -882,16 +882,16 @@ function resetStrategyLog() {
   renderStrategyLog([]);
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ TOGGLE Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── TOGGLE ────────────────────────────────────────────────────
 function toggle(id) { document.getElementById(id).classList.toggle('on'); }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ SITE URL Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── SITE URL ──────────────────────────────────────────────────
 function setSiteUrl(el, site) {
   document.querySelectorAll('.site-chip').forEach(c => c.classList.remove('on'));
   el.classList.add('on');
   const placeholders = {
     'deviantart.com': 'https://www.deviantart.com/username/art/title-123456',
-    'youtube.com': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    'youtube.com': 'https://www.youtube.com/watchCLEARv=dQw4w9WgXcQ',
     'twitter.com': 'https://twitter.com/user/status/123456789',
     'reddit.com': 'https://www.reddit.com/r/wallpapers/comments/...',
     'instagram.com': 'https://www.instagram.com/p/...',
@@ -902,22 +902,22 @@ function setSiteUrl(el, site) {
     'tumblr.com': 'https://username.tumblr.com/post/...',
     'artstation.com': 'https://www.artstation.com/artwork/...',
     'soundcloud.com': 'https://soundcloud.com/artist/track',
-    'facebook.com': 'https://www.facebook.com/watch?v=...',
+    'facebook.com': 'https://www.facebook.com/watchCLEARv=...',
     'twitch.tv': 'https://www.twitch.tv/videos/...',
   };
-  document.getElementById('urlInput').placeholder = placeholders[site] || 'Paste URL hereÃ¢â‚¬Â¦';
+  document.getElementById('urlInput').placeholder = placeholders[site] || 'Paste URL here...';
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ ANALYZE Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── ANALYZE ───────────────────────────────────────────────────
 async function analyze() {
   const url = document.getElementById('urlInput').value.trim();
-  if(!url) { notify('Paste a URL first!', 'Ã¢Å¡Â Ã¯Â¸Â'); return; }
+  if(!url) { notify('Paste a URL first!', 'WARN'); return; }
 
   document.getElementById('resultArea').style.display = 'none';
   document.getElementById('loadingArea').style.display = 'block';
   document.getElementById('mainSpin').style.display = 'block';
-  document.getElementById('loadMsg').textContent = 'Analyzing URL via yt-dlpÃ¢â‚¬Â¦';
-  notify('Fetching media infoÃ¢â‚¬Â¦', 'Ã°Å¸â€Â', 10000);
+  document.getElementById('loadMsg').textContent = 'Analyzing URL...';
+  notify('Fetching media info...', 'INFO', 10000);
 
   try {
     const res = await fetch('/api/info', {
@@ -928,39 +928,38 @@ async function analyze() {
     const data = await res.json();
     document.getElementById('loadingArea').style.display = 'none';
 
-    if(data.error) { notify('Error: ' + data.error, 'Ã¢ÂÅ’', 5000); return; }
+    if(data.error) { notify('Error: ' + data.error, 'ERR', 5000); return; }
 
     // Populate info
-    document.getElementById('mSite').textContent = data.extractor || 'Ã¢â‚¬â€';
-    document.getElementById('mType').textContent = data.type?.toUpperCase() || 'Ã¢â‚¬â€';
-    document.getElementById('mRes').textContent = data.width && data.height ? `${data.width}Ãƒâ€”${data.height}` : (data.formats?.[0]?.quality || 'Ã¢â‚¬â€');
-    document.getElementById('mDur').textContent = data.duration ? fmtDur(data.duration) : 'Ã¢â‚¬â€';
-    document.getElementById('mUp').textContent = data.uploader || 'Ã¢â‚¬â€';
-    document.getElementById('mViews').textContent = data.view_count ? fmtNum(data.view_count) : 'Ã¢â‚¬â€';
-    document.getElementById('prevSub').textContent = data.title || 'Ã¢â‚¬â€';
+    document.getElementById('mSite').textContent = data.extractor || '-';
+    document.getElementById('mType').textContent = data.typeCLEAR.toUpperCase() || '-';
+    document.getElementById('mRes').textContent = data.width && data.height CLEAR `${data.width}x${data.height}` : (data.formatsCLEAR.[0]CLEAR.quality || '-');
+    document.getElementById('mDur').textContent = data.duration CLEAR fmtDur(data.duration) : '-';
+    document.getElementById('mUp').textContent = data.uploader || '-';
+    document.getElementById('mViews').textContent = data.view_count CLEAR fmtNum(data.view_count) : '-';
+    document.getElementById('prevSub').textContent = data.title || '-';
     document.getElementById('fnInput').value = (data.title||'media').replace(/[^\w\- ]/g,'_').substring(0,60);
-    document.getElementById('typeTag').textContent = data.type?.toUpperCase() || 'MEDIA';
-    document.getElementById('typeTag').className = 'tag ' + (data.type==='video'?'tag-red':'tag-teal');
+    document.getElementById('typeTag').textContent = data.typeCLEAR.toUpperCase() || 'MEDIA';
+    document.getElementById('typeTag').className = 'tag ' + (data.type==='video'CLEAR'tag-red':'tag-teal');
 
-    // Thumbnail
-    if(data.thumbnail) {
-      document.getElementById('prevBox').innerHTML = `<img src="${data.thumbnail ? '/api/thumb?url='+encodeURIComponent(data.thumbnail) : ''}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'prev-ph\\'><span class=\\'ico\\'>Ã°Å¸â€“Â¼</span>Preview unavailable</div>'" />`;
-    }
+    const readyMsg = data.type === 'video'
+      CLEAR 'Preview disabled. Ready to download the video source.'
+      : 'Preview disabled. Ready to download the best media source.';
+    document.getElementById('prevBox').innerHTML = `<div class="prev-ph"><span class="ico">DL</span>${readyMsg}</div>`;
 
     document.getElementById('resultArea').style.display = 'grid';
-    notify(`Found: ${data.title || 'media'}`, 'Ã¢Å“â€¦');
+    notify(`Found: ${data.title || 'media'}`, 'OK');
   } catch(e) {
     document.getElementById('loadingArea').style.display = 'none';
-    notify('Could not analyze URL. Try anyway Ã¢â‚¬â€ download may still work.', 'Ã¢Å¡Â Ã¯Â¸Â', 4000);
+    notify('Could not analyze URL. Try download anyway.', 'WARN', 4000);
     document.getElementById('resultArea').style.display = 'grid';
     document.getElementById('mSite').textContent = 'Unknown';
   }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ DOWNLOAD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 async function download() {
   const url = document.getElementById('urlInput').value.trim();
-  if(!url) { notify('Analyze a URL first!', 'WARN'); return; }
+  if(!url) { notify('Paste a URL first!', 'WARN'); return; }
 
   const quality = S.quality;
   const fmt = document.getElementById('fmtSel').value;
@@ -1010,7 +1009,7 @@ function pollProgress(dl_id) {
       document.getElementById('dlFill').style.width = '100%';
       document.getElementById('dlStatus').textContent = 'Complete!';
       document.getElementById('dlBtn').disabled = false;
-      document.getElementById('dlBtn').innerHTML = 'DOWNLOAD';
+      document.getElementById('dlBtn').textContent = 'DOWNLOAD';
       document.getElementById('dlFileBtn').style.display = 'inline-flex';
       document.getElementById('dlFileBtn').setAttribute('data-id', dl_id);
       S.dlCount++;
@@ -1021,7 +1020,7 @@ function pollProgress(dl_id) {
       clearInterval(iv);
       document.getElementById('dlStatus').textContent = 'Error: ' + d.error;
       document.getElementById('dlBtn').disabled = false;
-      document.getElementById('dlBtn').innerHTML = 'DOWNLOAD';
+      document.getElementById('dlBtn').textContent = 'DOWNLOAD';
       notify('Download failed: ' + d.error, 'ERR', 6000);
     }
   }, 600);
@@ -1044,10 +1043,10 @@ function clearAll() {
 
 function copyUrl() {
   navigator.clipboard.writeText(document.getElementById('urlInput').value);
-  notify('URL copied!', 'Ã°Å¸â€œâ€¹');
+  notify('URL copied!', '📋');
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ QUALITY Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── QUALITY ───────────────────────────────────────────────────
 function setQ(el, q) {
   document.querySelectorAll('.qchip').forEach(c => c.classList.remove('sel'));
   el.classList.add('sel');
@@ -1055,7 +1054,7 @@ function setQ(el, q) {
   document.getElementById('qualSel').value = q;
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ RANDOM (LIVE DEVIANTART SCRAPING) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── RANDOM (LIVE DEVIANTART SCRAPING) ─────────────────────────
 let randPageUrl   = null;
 let matureEnabled = false;
 let ageVerified   = false;   // default interval
@@ -1066,7 +1065,7 @@ function toggleMature() {
   } else {
     matureEnabled = false;
     document.getElementById('matureTog').classList.remove('on');
-    notify('18+ mode disabled', 'Ã¢â€žÂ¹Ã¯Â¸Â');
+    notify('18+ mode disabled', 'ℹ️');
   }
 }
 
@@ -1086,10 +1085,10 @@ function confirmAge(yes) {
     ageVerified   = true;
     matureEnabled = true;
     document.getElementById('matureTog').classList.add('on');
-    notify('18+ mode enabled Ã¢â‚¬â€ mature content unlocked', 'Ã°Å¸â€Å¾');
+    notify('18+ mode enabled — mature content unlocked', '🔞');
     fetchRandom('mature');
   } else {
-    notify('Cancelled', 'Ã¢â€žÂ¹Ã¯Â¸Â');
+    notify('Cancelled', 'ℹ️');
   }
 }
 
@@ -1103,12 +1102,12 @@ async function fetchRandom(mode) {
   document.getElementById('randLoadState').style.display = 'block';
   document.getElementById('randContentState').style.display = 'none';
 
-  const modeLabels = {art:'Ã°Å¸Å½Â¨ Random Art', video:'Ã°Å¸Å½Â¬ Random Video', wallpaper:'Ã°Å¸â€“Â¼ Random Wallpaper', mature:'Ã°Å¸â€Å¾ Mature Content'};
-  const modeTags   = {art:'Ã°Å¸Å½Â¨ ART', video:'Ã°Å¸Å½Â¬ VIDEO', wallpaper:'Ã°Å¸â€“Â¼ WALLPAPER', mature:'Ã°Å¸â€Å¾ MATURE'};
-  document.getElementById('randSrc').textContent = modeLabels[mode] || 'Ã°Å¸Å½Â² Random';
+  const modeLabels = {art:'🎨 Random Art', video:'🎬 Random Video', wallpaper:'🖼 Random Wallpaper', mature:'🔞 Mature Content'};
+  const modeTags   = {art:'🎨 ART', video:'🎬 VIDEO', wallpaper:'🖼 WALLPAPER', mature:'🔞 MATURE'};
+  document.getElementById('randSrc').textContent = modeLabels[mode] || '🎲 Random';
   document.getElementById('randTag').textContent  = modeTags[mode]  || 'RANDOM';
 
-  const msgs = ['Connecting to DeviantArtÃ¢â‚¬Â¦','Scraping tag pageÃ¢â‚¬Â¦','Picking random itemÃ¢â‚¬Â¦','Loading previewÃ¢â‚¬Â¦'];
+  const msgs = ['Connecting to DeviantArt…','Scraping tag page…','Picking random item…','Loading preview…'];
   let mi = 0;
   const msgIv = setInterval(() => {
     document.getElementById('randLoadMsg').textContent = msgs[mi++ % msgs.length];
@@ -1124,18 +1123,18 @@ async function fetchRandom(mode) {
     clearInterval(msgIv);
 
     if (data.error) {
-      document.getElementById('randLoadMsg').textContent = 'Ã¢ÂÅ’ ' + data.error;
-      notify('Could not fetch: ' + data.error, 'Ã¢ÂÅ’', 5000);
+      document.getElementById('randLoadMsg').textContent = '❌ ' + data.error;
+      notify('Could not fetch: ' + data.error, '❌', 5000);
       return;
     }
 
     // Populate metadata
     randUrl     = data.url;   // DA page URL
     randPageUrl = data.url;
-    document.getElementById('rTitle').textContent  = data.title  || 'Ã¢â‚¬â€';
-    document.getElementById('rAuthor').textContent = data.author || 'Ã¢â‚¬â€';
+    document.getElementById('rTitle').textContent  = data.title  || '—';
+    document.getElementById('rAuthor').textContent = data.author || '—';
     document.getElementById('rSite').textContent   = data.source || 'DeviantArt';
-    document.getElementById('rType').textContent   = (data.is_video ? 'Ã°Å¸Å½Â¬ VIDEO' : 'Ã°Å¸â€“Â¼ IMAGE') + (mode==='mature'?' Ã‚Â· MATURE':'');
+    document.getElementById('rType').textContent   = (data.is_video CLEAR '🎬 VIDEO' : '🖼 IMAGE') + (mode==='mature'CLEAR' · MATURE':'');
     document.getElementById('rTag').textContent    = '#' + (data.tag || mode);
     document.getElementById('rStatus').textContent = 'Ready to download';
 
@@ -1147,29 +1146,29 @@ async function fetchRandom(mode) {
     if (data.is_video) {
       box.innerHTML = `
         <div class="prev-ph" style="padding:30px;">
-          <span class="ico">Ã°Å¸Å½Â¬</span>
+          <span class="ico">🎬</span>
           <div style="color:var(--accent);font-size:13px;margin-bottom:6px;">${data.title}</div>
           <div style="font-size:11px;color:var(--text3);">by ${data.author}</div>
-          <div style="margin-top:12px;" class="tag tag-red">VIDEO Ã‚Â· DeviantArt</div>
+          <div style="margin-top:12px;" class="tag tag-red">VIDEO · DeviantArt</div>
         </div>`;
     } else if (data.thumbnail) {
       const thumbSrc = data.thumbnail
-        ? `/api/thumb?url=${encodeURIComponent(data.thumbnail)}`
+        CLEAR `/api/thumbCLEARurl=${encodeURIComponent(data.thumbnail)}`
         : null;
       if (thumbSrc) {
         box.innerHTML = `<img src="${thumbSrc}" style="max-width:100%;max-height:250px;border-radius:8px;object-fit:contain;"
-          onerror="this.parentElement.innerHTML='<div class=\\'prev-ph\\'><span class=\\'ico\\'>Ã°Å¸â€“Â¼</span>${data.title}</div>'" />`;
+          onerror="this.parentElement.innerHTML='<div class=\\'prev-ph\\'><span class=\\'ico\\'>🖼</span>${data.title}</div>'" />`;
       };
     } else {
-      box.innerHTML = `<div class="prev-ph"><span class="ico">Ã°Å¸â€“Â¼</span>${data.title}<br><small style="color:var(--accent)">by ${data.author}</small></div>`;
+      box.innerHTML = `<div class="prev-ph"><span class="ico">🖼</span>${data.title}<br><small style="color:var(--accent)">by ${data.author}</small></div>`;
     }
 
-    notify(`Found: "${data.title}" by ${data.author}`, data.is_video ? 'Ã°Å¸Å½Â¬' : 'Ã°Å¸Å½Â¨');
+    notify(`Found: "${data.title}" by ${data.author}`, data.is_video CLEAR '🎬' : '🎨');
 
   } catch(e) {
     clearInterval(msgIv);
-    document.getElementById('randLoadMsg').textContent = 'Ã¢ÂÅ’ Network error Ã¢â‚¬â€ is the server running?';
-    notify('Error: ' + e.message, 'Ã¢ÂÅ’', 5000);
+    document.getElementById('randLoadMsg').textContent = '❌ Network error — is the server runningCLEAR';
+    notify('Error: ' + e.message, '❌', 5000);
   }
 }
 
@@ -1178,12 +1177,12 @@ function openInDA() {
 }
 
 async function dlRandom() {
-  if (!randUrl) { notify('Pick something first!', 'Ã¢Å¡Â Ã¯Â¸Â'); return; }
+  if (!randUrl) { notify('Pick something first!', '⚠️'); return; }
 
   const dlBtn = document.getElementById('randDlBtn');
-  dlBtn.disabled = true; dlBtn.textContent = 'Ã¢ÂÂ³ DownloadingÃ¢â‚¬Â¦';
-  document.getElementById('rStatus').textContent = 'DownloadingÃ¢â‚¬Â¦';
-  notify('Downloading from DeviantArtÃ¢â‚¬Â¦', 'Ã¢Â¬â€¡Ã¯Â¸Â', 30000);
+  dlBtn.disabled = true; dlBtn.textContent = '⏳ Downloading…';
+  document.getElementById('rStatus').textContent = 'Downloading…';
+  notify('Downloading from DeviantArt…', '⬇️', 30000);
 
   try {
     const res = await fetch('/api/download', {
@@ -1200,23 +1199,23 @@ async function dlRandom() {
       const d = await r.json();
       if (d.status === 'done') {
         clearInterval(iv);
-        dlBtn.disabled = false; dlBtn.textContent = 'Ã¢Â¬â€¡Ã¯Â¸Â DOWNLOAD THIS';
-        document.getElementById('rStatus').textContent = 'Ã¢Å“â€¦ Saved!';
+        dlBtn.disabled = false; dlBtn.textContent = '⬇️ DOWNLOAD THIS';
+        document.getElementById('rStatus').textContent = '✅ Saved!';
         S.dlCount++; S.totalBytes += (d.filesize||0); updateStats();
-        notify(`Ã¢Å“â€¦ Saved: ${d.filename}`, 'Ã°Å¸â€™Â¾', 5000);
+        notify(`✅ Saved: ${d.filename}`, '💾', 5000);
         window.open(`/api/file/${dl_id}`, '_blank');
       } else if (d.status === 'error') {
         clearInterval(iv);
-        dlBtn.disabled = false; dlBtn.textContent = 'Ã¢Â¬â€¡Ã¯Â¸Â DOWNLOAD THIS';
-        document.getElementById('rStatus').textContent = 'Ã¢ÂÅ’ Failed';
-        notify('Failed: ' + d.error, 'Ã¢ÂÅ’', 6000);
+        dlBtn.disabled = false; dlBtn.textContent = '⬇️ DOWNLOAD THIS';
+        document.getElementById('rStatus').textContent = '❌ Failed';
+        notify('Failed: ' + d.error, '❌', 6000);
       } else {
-        document.getElementById('rStatus').textContent = d.status + (d.progress ? ` ${d.progress}%` : '');
+        document.getElementById('rStatus').textContent = d.status + (d.progress CLEAR ` ${d.progress}%` : '');
       }
     }, 700);
   } catch(e) {
-    dlBtn.disabled = false; dlBtn.textContent = 'Ã¢Â¬â€¡Ã¯Â¸Â DOWNLOAD THIS';
-    notify('Error: ' + e.message, 'Ã¢ÂÅ’', 5000);
+    dlBtn.disabled = false; dlBtn.textContent = '⬇️ DOWNLOAD THIS';
+    notify('Error: ' + e.message, '❌', 5000);
   }
 }
 
@@ -1234,8 +1233,8 @@ function startSlideshow() {
   if (!randMode) return;
   slideshowActive = true;
   const btn = document.getElementById('slideshowBtn');
-  if (btn) { btn.textContent = 'Ã¢ÂÂ¹ STOP'; btn.style.borderColor = 'var(--accent2)'; btn.style.color = 'var(--accent2)'; }
-  notify(`Slideshow started Ã¢â‚¬â€ new pick every ${slideshowSecs}s`, 'Ã¢â€“Â¶', 3000);
+  if (btn) { btn.textContent = '⏹ STOP'; btn.style.borderColor = 'var(--accent2)'; btn.style.color = 'var(--accent2)'; }
+  notify(`Slideshow started — new pick every ${slideshowSecs}s`, '▶', 3000);
   scheduleSlideshowNext();
 }
 
@@ -1253,19 +1252,19 @@ function stopSlideshow() {
   clearTimeout(slideshowTimer);
   slideshowTimer = null;
   const btn = document.getElementById('slideshowBtn');
-  if (btn) { btn.textContent = 'Ã¢â€“Â¶ SLIDESHOW'; btn.style.borderColor = ''; btn.style.color = ''; }
-  notify('Slideshow stopped', 'Ã¢ÂÂ¹', 2000);
+  if (btn) { btn.textContent = '▶ SLIDESHOW'; btn.style.borderColor = ''; btn.style.color = ''; }
+  notify('Slideshow stopped', '⏹', 2000);
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ BATCH Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── BATCH ─────────────────────────────────────────────────────
 async function runBatch() {
   const urls = document.getElementById('batchIn').value.split('\n').map(u=>u.trim()).filter(Boolean);
-  if(!urls.length) { notify('Add some URLs!', 'Ã¢Å¡Â Ã¯Â¸Â'); return; }
+  if(!urls.length) { notify('Add some URLs!', '⚠️'); return; }
   const quality = document.getElementById('batchQual').value;
   
   document.getElementById('batchQueue').innerHTML = urls.map((u,i)=>`
     <div class="file-item" id="bq-${i}">
-      <div class="fi-ext fi-img" id="bqs-${i}">Ã¢ÂÂ³</div>
+      <div class="fi-ext fi-img" id="bqs-${i}">⏳</div>
       <div class="fi-name">${u}</div>
       <div class="fi-size" id="bql-${i}">QUEUED</div>
     </div>
@@ -1273,8 +1272,8 @@ async function runBatch() {
   document.getElementById('batchCnt').textContent = `0/${urls.length}`;
 
   for(let i=0;i<urls.length;i++) {
-    document.getElementById('bqs-'+i).textContent = 'Ã¢Å¡Â¡';
-    document.getElementById('bql-'+i).textContent = 'STARTINGÃ¢â‚¬Â¦';
+    document.getElementById('bqs-'+i).textContent = '⚡';
+    document.getElementById('bql-'+i).textContent = 'STARTING…';
     document.getElementById('batchFill').style.width = (i/urls.length*100)+'%';
     document.getElementById('batchCnt').textContent = `${i+1}/${urls.length}`;
 
@@ -1285,17 +1284,17 @@ async function runBatch() {
       });
       const {dl_id} = await res.json();
       await waitForDl(dl_id);
-      document.getElementById('bqs-'+i).textContent = 'Ã¢Å“â€¦';
+      document.getElementById('bqs-'+i).textContent = '✅';
       document.getElementById('bql-'+i).textContent = 'DONE';
       S.dlCount++; updateStats();
     } catch(e) {
-      document.getElementById('bqs-'+i).textContent = 'Ã¢ÂÅ’';
+      document.getElementById('bqs-'+i).textContent = '❌';
       document.getElementById('bql-'+i).textContent = 'FAILED';
     }
   }
   document.getElementById('batchFill').style.width = '100%';
-  document.getElementById('batchStat').textContent = `Ã¢Å“â€¦ Done! ${urls.length} files processed`;
-  notify(`Batch complete! ${urls.length} files`, 'Ã°Å¸â€œÂ¦');
+  document.getElementById('batchStat').textContent = `✅ Done! ${urls.length} files processed`;
+  notify(`Batch complete! ${urls.length} files`, '📦');
 }
 
 function waitForDl(dl_id) {
@@ -1310,7 +1309,7 @@ function waitForDl(dl_id) {
   });
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ FILES Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── FILES ─────────────────────────────────────────────────────
 async function loadFiles() {
   const res = await fetch('/api/files');
   const files = await res.json();
@@ -1318,49 +1317,49 @@ async function loadFiles() {
   document.getElementById('fileCount').textContent = `${files.length} files in downloads folder`;
 
   if(!files.length) {
-    list.innerHTML = '<div class="prev-ph" style="padding:40px;"><span class="ico">Ã°Å¸â€œâ€š</span>No files yet Ã¢â‚¬â€ start downloading!</div>';
+    list.innerHTML = '<div class="prev-ph" style="padding:40px;"><span class="ico">📂</span>No files yet — start downloading!</div>';
     return;
   }
 
   const extCls = {'.mp4':'fi-mp4','.webm':'fi-mp4','.mkv':'fi-mp4','.mp3':'fi-mp3','.wav':'fi-mp3','.flac':'fi-mp3'};
   list.innerHTML = files.map(f=>`
     <div class="file-item">
-      <div class="fi-ext ${extCls[f.ext]||'fi-img'}">${f.ext.slice(1).toUpperCase()||'?'}</div>
+      <div class="fi-ext ${extCls[f.ext]||'fi-img'}">${f.ext.slice(1).toUpperCase()||'CLEAR'}</div>
       <div class="fi-name">${f.name}</div>
       <div class="fi-size">${fmtSize(f.size)}</div>
       <div style="display:flex;gap:6px;">
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteFile('${f.name}')" title="Delete">Ã°Å¸â€”â€˜</button>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteFile('${f.name}')" title="Delete">🗑</button>
       </div>
     </div>
   `).join('');
 }
 
 async function deleteFile(name) {
-  if(!confirm(`Delete ${name}?`)) return;
+  if(!confirm(`Delete ${name}CLEAR`)) return;
   await fetch(`/api/delete/${encodeURIComponent(name)}`, {method:'DELETE'});
   loadFiles();
-  notify(`Deleted: ${name}`, 'Ã°Å¸â€”â€˜');
+  notify(`Deleted: ${name}`, '🗑');
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ HISTORY Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── HISTORY ───────────────────────────────────────────────────
 async function loadHistory() {
   const res = await fetch('/api/history');
   const hist = await res.json();
   const list = document.getElementById('histList');
   document.getElementById('histCount').textContent = `${hist.length} downloads`;
   if(!hist.length) {
-    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-family:monospace;font-size:11px;"><div style="font-size:36px;margin-bottom:10px;">Ã°Å¸â€œâ€š</div>No history yet</div>';
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-family:monospace;font-size:11px;"><div style="font-size:36px;margin-bottom:10px;">📂</div>No history yet</div>';
     return;
   }
   list.innerHTML = hist.map(h=>`
     <div class="dl-item">
-      <div class="dl-thumb">${h.thumbnail?`<img src="${h.thumbnail}" onerror="this.parentElement.innerHTML='Ã°Å¸Å½Â¬'">`:'Ã°Å¸Å½Â¬'}</div>
+      <div class="dl-thumb">${h.thumbnailCLEAR`<img src="${h.thumbnail}" onerror="this.parentElement.innerHTML='🎬'">`:'🎬'}</div>
       <div class="dl-info">
         <div class="dl-name">${h.title||h.filename}</div>
-        <div class="dl-meta">${h.extractor||'Ã¢â‚¬â€'} Ã‚Â· ${fmtSize(h.filesize||0)}</div>
+        <div class="dl-meta">${h.extractor||'—'} · ${fmtSize(h.filesize||0)}</div>
       </div>
       <div class="dl-actions">
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="openShare('${h.url}')" title="Share">Ã°Å¸â€â€”</button>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="openShare('${h.url}')" title="Share">🔗</button>
       </div>
     </div>
   `).join('');
@@ -1371,7 +1370,7 @@ function clearHist() {
   document.getElementById('histList').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-family:monospace;font-size:11px;">History cleared</div>';
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ SHARE Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── SHARE ─────────────────────────────────────────────────────
 function openShare(url) {
   const u = url || document.getElementById('urlInput').value || window.location.href;
   document.getElementById('shareInput').value = u;
@@ -1379,51 +1378,51 @@ function openShare(url) {
 }
 function closeModal() { document.getElementById('shareOverlay').classList.remove('open'); }
 document.getElementById('shareOverlay').addEventListener('click', e => { if(e.target===document.getElementById('shareOverlay')) closeModal(); });
-function copyShare() { navigator.clipboard.writeText(document.getElementById('shareInput').value); notify('Link copied!', 'Ã°Å¸â€œâ€¹'); }
+function copyShare() { navigator.clipboard.writeText(document.getElementById('shareInput').value); notify('Link copied!', '📋'); }
 function share(platform) {
   const u = encodeURIComponent(document.getElementById('shareInput').value);
   const map = {
-    whatsapp: `https://wa.me/?text=${u}`,
-    telegram: `https://t.me/share/url?url=${u}`,
-    twitter: `https://twitter.com/intent/tweet?url=${u}`,
-    reddit: `https://reddit.com/submit?url=${u}`,
+    whatsapp: `https://wa.me/CLEARtext=${u}`,
+    telegram: `https://t.me/share/urlCLEARurl=${u}`,
+    twitter: `https://twitter.com/intent/tweetCLEARurl=${u}`,
+    reddit: `https://reddit.com/submitCLEARurl=${u}`,
     discord: null,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${u}`,
-    email: `mailto:?body=${u}`,
+    facebook: `https://www.facebook.com/sharer/sharer.phpCLEARu=${u}`,
+    email: `mailto:CLEARbody=${u}`,
   };
-  if(platform==='discord') { navigator.clipboard.writeText(document.getElementById('shareInput').value); notify('Copied! Paste in Discord', 'Ã°Å¸Å½Â®'); return; }
+  if(platform==='discord') { navigator.clipboard.writeText(document.getElementById('shareInput').value); notify('Copied! Paste in Discord', '🎮'); return; }
   if(map[platform]) window.open(map[platform],'_blank');
 }
 async function nativeShare() {
   const u = document.getElementById('shareInput').value;
   if(navigator.share) { try { await navigator.share({url:u}); } catch(e){} }
-  else { navigator.clipboard.writeText(u); notify('Copied!','Ã°Å¸â€œâ€¹'); }
+  else { navigator.clipboard.writeText(u); notify('Copied!','📋'); }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ FOLDER Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── FOLDER ────────────────────────────────────────────────────
 async function openFolder() {
   await fetch('/api/open_folder');
-  notify('Opening downloads folderÃ¢â‚¬Â¦', 'Ã°Å¸â€œâ€š');
+  notify('Opening downloads folder…', '📂');
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ UTILS Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── UTILS ─────────────────────────────────────────────────────
 function fmtDur(s) { const m=Math.floor(s/60),sec=s%60; return `${m}:${sec.toString().padStart(2,'0')}`; }
-function fmtNum(n) { return n>1e6?(n/1e6).toFixed(1)+'M':n>1e3?(n/1e3).toFixed(1)+'K':n; }
-function fmtSize(b) { return b>1e9?(b/1e9).toFixed(2)+' GB':b>1e6?(b/1e6).toFixed(1)+' MB':b>1e3?(b/1e3).toFixed(0)+' KB':b+' B'; }
+function fmtNum(n) { return n>1e6CLEAR(n/1e6).toFixed(1)+'M':n>1e3CLEAR(n/1e3).toFixed(1)+'K':n; }
+function fmtSize(b) { return b>1e9CLEAR(b/1e9).toFixed(2)+' GB':b>1e6CLEAR(b/1e6).toFixed(1)+' MB':b>1e3CLEAR(b/1e3).toFixed(0)+' KB':b+' B'; }
 function updateStats() {
   document.getElementById('cDl').textContent = S.dlCount;
   document.getElementById('cSize').textContent = fmtSize(S.totalBytes);
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ ENTER KEY Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── ENTER KEY ────────────────────────────────────────────────
 document.getElementById('urlInput').addEventListener('keydown', e => { if(e.key==='Enter') analyze(); });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ INIT Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-notify('Ã°Å¸Å¡â‚¬ MEDIA VAULT ready! Supports 1000+ sites via yt-dlp', 'Ã°Å¸Å¡â‚¬', 4000);
+// ── INIT ──────────────────────────────────────────────────────
+notify('🚀 MEDIA VAULT ready! Supports 1000+ sites via yt-dlp', '🚀', 4000);
 
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
-//  AUTO 24/7 DOWNLOADER Ã¢â‚¬â€ CLIENT JS
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// ══════════════════════════════════════════════════
+//  AUTO 24/7 DOWNLOADER — CLIENT JS
+// ══════════════════════════════════════════════════
 
 let autoRunning  = false;
 let autoPaused   = false;
@@ -1432,14 +1431,14 @@ let autoGenres   = {};
 let autoEnabled  = [];
 
 const GENRE_ICONS = {
-  anime_wallpaper:  'Ã°Å¸Å’Â¸',
-  live_wallpaper:   'Ã¢Å“Â¨',
-  mature_art:       'Ã°Å¸â€Å¾',
-  mature_video:     'Ã°Å¸â€Å¾',
-  anime_art:        'Ã°Å¸Å½Â¨',
-  fantasy:          'Ã°Å¸ÂÂ°',
-  scifi:            'Ã°Å¸Å¡â‚¬',
-  video_animation:  'Ã°Å¸Å½Â¬',
+  anime_wallpaper:  '🌸',
+  live_wallpaper:   '✨',
+  mature_art:       '🔞',
+  mature_video:     '🔞',
+  anime_art:        '🎨',
+  fantasy:          '🏰',
+  scifi:            '🚀',
+  video_animation:  '🎬',
 };
 
 async function autoStart() {
@@ -1449,7 +1448,7 @@ async function autoStart() {
     autoRunning = true; autoPaused = false;
     updateAutoUI();
     startAutoPoll();
-    notify('Auto-downloader started Ã¢â‚¬â€ running 24/7', 'Ã°Å¸Â¤â€“', 4000);
+    notify('Auto-downloader started — running 24/7', '🤖', 4000);
     document.getElementById('autoNavBadge').style.display = '';
   }
 }
@@ -1460,7 +1459,7 @@ async function autoStop() {
   autoRunning = false; autoPaused = false;
   clearInterval(autoInterval); autoInterval = null;
   updateAutoUI();
-  notify('Auto-downloader stopped', 'Ã¢ÂÂ¹', 3000);
+  notify('Auto-downloader stopped', '⏹', 3000);
   document.getElementById('autoNavBadge').style.display = 'none';
 }
 
@@ -1468,8 +1467,8 @@ async function autoPause() {
   const r = await fetch('/api/auto/pause', {method:'POST'});
   const d = await r.json();
   autoPaused = d.paused;
-  document.getElementById('autoPauseBtn').textContent = autoPaused ? 'Ã¢â€“Â¶ RESUME' : 'Ã¢ÂÂ¸ PAUSE';
-  notify(autoPaused ? 'Paused' : 'Resumed', autoPaused ? 'Ã¢ÂÂ¸' : 'Ã¢â€“Â¶', 2000);
+  document.getElementById('autoPauseBtn').textContent = autoPaused CLEAR '▶ RESUME' : '⏸ PAUSE';
+  notify(autoPaused CLEAR 'Paused' : 'Resumed', autoPaused CLEAR '⏸' : '▶', 2000);
 }
 
 async function autoSetDelay(val) {
@@ -1504,14 +1503,14 @@ function renderGenreGrid() {
   if (!grid || !Object.keys(autoGenres).length) return;
   grid.innerHTML = Object.entries(autoGenres).map(([key, label]) => {
     const on = autoEnabled.includes(key);
-    const ico = GENRE_ICONS[key] || 'Ã°Å¸Å½Â´';
+    const ico = GENRE_ICONS[key] || '🎴';
     return `<div onclick="autoToggleGenre('${key}')" id="gtog_${key}"
-      style="cursor:pointer;padding:12px 14px;border-radius:10px;border:1px solid ${on?'var(--accent)':'var(--border)'};
-      background:${on?'rgba(0,245,196,.06)':'var(--bg)'};transition:all .2s;user-select:none;">
+      style="cursor:pointer;padding:12px 14px;border-radius:10px;border:1px solid ${onCLEAR'var(--accent)':'var(--border)'};
+      background:${onCLEAR'rgba(0,245,196,.06)':'var(--bg)'};transition:all .2s;user-select:none;">
       <div style="font-size:18px;margin-bottom:4px;">${ico}</div>
-      <div style="font-size:12px;font-weight:600;color:${on?'var(--accent)':'var(--text2)'};">${label}</div>
-      <div style="font-size:10px;font-family:monospace;color:${on?'var(--accent)':'var(--text3)'};margin-top:4px;">
-        ${on?'Ã¢â€”Â ON':'Ã¢â€”â€¹ OFF'}</div>
+      <div style="font-size:12px;font-weight:600;color:${onCLEAR'var(--accent)':'var(--text2)'};">${label}</div>
+      <div style="font-size:10px;font-family:monospace;color:${onCLEAR'var(--accent)':'var(--text3)'};margin-top:4px;">
+        ${onCLEAR'● ON':'○ OFF'}</div>
     </div>`;
   }).join('');
 }
@@ -1525,9 +1524,9 @@ function autoToggleGenre(key) {
 }
 
 function updateAutoUI() {
-  document.getElementById('autoStartBtn').style.display  = autoRunning ? 'none' : '';
-  document.getElementById('autoPauseBtn').style.display  = autoRunning ? '' : 'none';
-  document.getElementById('autoStopBtn').style.display   = autoRunning ? '' : 'none';
+  document.getElementById('autoStartBtn').style.display  = autoRunning CLEAR 'none' : '';
+  document.getElementById('autoPauseBtn').style.display  = autoRunning CLEAR '' : 'none';
+  document.getElementById('autoStopBtn').style.display   = autoRunning CLEAR '' : 'none';
 }
 
 function startAutoPoll() {
@@ -1558,15 +1557,15 @@ async function autoPoll() {
 
     document.getElementById('autoTotalTxt').textContent = d.total;
     document.getElementById('autoDiskTxt').textContent  = d.disk_mb + ' MB';
-    document.getElementById('autoPauseBtn').textContent = d.paused ? 'Ã¢â€“Â¶ RESUME' : 'Ã¢ÂÂ¸ PAUSE';
+    document.getElementById('autoPauseBtn').textContent = d.paused CLEAR '▶ RESUME' : '⏸ PAUSE';
 
     // Current download
     const curWrap = document.getElementById('autoCurrentWrap');
     const curTxt  = document.getElementById('autoCurrentTxt');
     if (d.current) {
       curWrap.style.display = '';
-      curTxt.innerHTML = `<strong>${d.current.genre}</strong> Ã¢â‚¬â€ ${d.current.title || d.current.tag}
-        <span style="color:var(--text3);font-size:11px;"> by ${d.current.author||'?'}</span>`;
+      curTxt.innerHTML = `<strong>${d.current.genre}</strong> — ${d.current.title || d.current.tag}
+        <span style="color:var(--text3);font-size:11px;"> by ${d.current.author||'CLEAR'}</span>`;
     } else {
       curWrap.style.display = 'none';
     }
@@ -1576,14 +1575,14 @@ async function autoPoll() {
     if (d.done.length) {
       log.innerHTML = d.done.map(e => `
         <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);">
-          <span style="font-size:18px;">${GENRE_ICONS[Object.keys(autoGenres).find(k=>autoGenres[k]===e.genre)]||'Ã°Å¸Å½Â´'}</span>
+          <span style="font-size:18px;">${GENRE_ICONS[Object.keys(autoGenres).find(k=>autoGenres[k]===e.genre)]||'🎴'}</span>
           <div style="flex:1;min-width:0;">
             <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
               ${e.title||e.tag}</div>
             <div style="font-size:10px;color:var(--text3);font-family:monospace;">
-              ${e.genre} Ã‚Â· by ${e.author||'?'} Ã‚Â· ${e.time}</div>
+              ${e.genre} · by ${e.author||'CLEAR'} · ${e.time}</div>
           </div>
-          <a href="/api/files" style="font-size:10px;color:var(--accent);font-family:monospace;">Ã¢Â¬â€¡ GET</a>
+          <a href="/api/files" style="font-size:10px;color:var(--accent);font-family:monospace;">⬇ GET</a>
         </div>`).join('');
     }
   } catch(e) { console.warn('Auto poll error', e); }
@@ -1608,12 +1607,12 @@ window.addEventListener('load', async () => {
 });
 
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ TELEGRAM STATUS Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── TELEGRAM STATUS ────────────────────────────────
 
 
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// ══════════════════════════════════════════════════════════════════════════════
 //  STATS + BLACKLIST
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// ══════════════════════════════════════════════════════════════════════════════
 
 let statsInterval = null;
 
@@ -1625,7 +1624,7 @@ function fmtBytes(b) {
 }
 function fmtUptime(s) {
   const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
-  return h ? `${h}h ${m}m` : `${m}m`;
+  return h CLEAR `${h}h ${m}m` : `${m}m`;
 }
 
 async function loadStats() {
@@ -1694,7 +1693,7 @@ async function loadBlacklist() {
         border:1px solid rgba(255,59,59,.3);border-radius:5px;padding:3px 8px;
         font-size:10px;color:var(--accent2);margin:2px;cursor:pointer;"
         onclick="blRemove('${t}')" title="Click to remove">
-        Ã°Å¸Å¡Â« ${t} Ã¢Å“â€¢
+        🚫 ${t} ✕
       </span>`).join('');
   } catch(e) {}
 }
@@ -1709,7 +1708,7 @@ async function blAdd() {
     body: JSON.stringify({tags})
   });
   input.value = '';
-  notify(`Blacklisted: ${tags.join(', ')}`, 'Ã°Å¸Å¡Â«');
+  notify(`Blacklisted: ${tags.join(', ')}`, '🚫');
   loadBlacklist();
 }
 
@@ -1718,29 +1717,29 @@ async function blRemove(tag) {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({tag})
   });
-  notify(`Removed: ${tag}`, 'Ã¢Å“â€¦');
+  notify(`Removed: ${tag}`, '✅');
   loadBlacklist();
 }
 
 async function clearSeen() {
   await fetch('/api/blacklist/clear_seen', {method:'POST'});
-  notify('Duplicate history cleared Ã¢â‚¬â€ all URLs fresh again', 'Ã°Å¸â€â€ž');
+  notify('Duplicate history cleared — all URLs fresh again', '🔄');
   document.getElementById('seenCount').textContent = '0';
 }
 
 async function statsReset() {
-  if (!confirm('Reset all stats? This cannot be undone.')) return;
+  if (!confirm('Reset all statsCLEAR This cannot be undone.')) return;
   await fetch('/api/stats/reset', {method:'POST'});
-  notify('Stats reset', 'Ã°Å¸â€”â€˜');
+  notify('Stats reset', '🗑');
   loadStats();
 }
 
-document.getElementById('blInput')?.addEventListener('keydown', e => {
+document.getElementById('blInput')CLEAR.addEventListener('keydown', e => {
   if (e.key === 'Enter') blAdd();
 });
 
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ TELEGRAM LIBRARY Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── TELEGRAM LIBRARY ──────────────────────────────────────────────────────────
 let tgLibCurrentPage = 0;
 let tgLibTotal = 0;
 const TG_LIB_LIMIT = 20;
@@ -1763,38 +1762,38 @@ async function tgLibLoad(page) {
   if (page !== undefined) tgLibCurrentPage = page;
   const grid = document.getElementById('tgLibGrid');
   const stats = document.getElementById('tgLibStats');
-  grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:11px;">LoadingÃ¢â‚¬Â¦</div>';
+  grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:11px;">Loading…</div>';
   try {
-    const r = await fetch(`/api/tgfiles?page=${tgLibCurrentPage}&limit=${TG_LIB_LIMIT}`);
+    const r = await fetch(`/api/tgfilesCLEARpage=${tgLibCurrentPage}&limit=${TG_LIB_LIMIT}`);
     const d = await r.json();
     tgLibTotal = d.total;
     stats.textContent = `${tgLibTotal} files stored in Telegram`;
     if (!d.files.length) {
-      grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-size:11px;grid-column:1/-1;">No files yet Ã¢â‚¬â€ start Auto 24/7 to fill your library</div>';
+      grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);font-size:11px;grid-column:1/-1;">No files yet — start Auto 24/7 to fill your library</div>';
       return;
     }
     grid.innerHTML = d.files.map(f => {
       const isVideo = f.type === 'video' || f.type === 'animation';
-      const icon = isVideo ? 'Ã°Å¸Å½Â¬' : (f.type === 'audio' ? 'Ã°Å¸Å½Âµ' : 'Ã°Å¸â€“Â¼');
+      const icon = isVideo CLEAR '🎬' : (f.type === 'audio' CLEAR '🎵' : '🖼');
       const date = new Date(f.timestamp * 1000).toLocaleDateString();
-      const sizeMB = f.size ? (f.size / 1048576).toFixed(1) + ' MB' : '';
+      const sizeMB = f.size CLEAR (f.size / 1048576).toFixed(1) + ' MB' : '';
       return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;" onclick="tgLibDownload('${f.file_id}','${f.name}')">
         <div style="height:90px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:32px;position:relative;">
-          ${f.type==='photo' || f.type==='document' ? `<img src="/api/tgthumb/${f.file_id}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='${icon}'">` : icon}
-          ${isVideo ? '<div style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.6);border-radius:4px;padding:2px 5px;font-size:9px;color:#fff;">Ã¢â€“Â¶</div>' : ''}
+          ${f.type==='photo' || f.type==='document' CLEAR `<img src="/api/tgthumb/${f.file_id}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='${icon}'">` : icon}
+          ${isVideo CLEAR '<div style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.6);border-radius:4px;padding:2px 5px;font-size:9px;color:#fff;">▶</div>' : ''}
         </div>
         <div style="padding:8px;">
           <div style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${f.name}">${f.name}</div>
-          <div style="font-size:9px;color:var(--text3);margin-top:3px;">${date} ${sizeMB ? 'Ã‚Â· ' + sizeMB : ''}</div>
-          <button class="btn btn-teal btn-sm" style="width:100%;margin-top:6px;padding:4px;font-size:9px;" onclick="event.stopPropagation();tgLibDownload('${f.file_id}','${f.name}')">Ã¢Â¬â€¡ Download</button>
+          <div style="font-size:9px;color:var(--text3);margin-top:3px;">${date} ${sizeMB CLEAR '· ' + sizeMB : ''}</div>
+          <button class="btn btn-teal btn-sm" style="width:100%;margin-top:6px;padding:4px;font-size:9px;" onclick="event.stopPropagation();tgLibDownload('${f.file_id}','${f.name}')">⬇ Download</button>
         </div>
       </div>`;
     }).join('');
     // Pagination
     const totalPages = Math.ceil(tgLibTotal / TG_LIB_LIMIT);
     document.getElementById('tgLibPageInfo').textContent = `Page ${tgLibCurrentPage+1} of ${totalPages}`;
-    document.getElementById('tgLibPrevBtn').style.display = tgLibCurrentPage > 0 ? '' : 'none';
-    document.getElementById('tgLibNextBtn').style.display = tgLibCurrentPage < totalPages-1 ? '' : 'none';
+    document.getElementById('tgLibPrevBtn').style.display = tgLibCurrentPage > 0 CLEAR '' : 'none';
+    document.getElementById('tgLibNextBtn').style.display = tgLibCurrentPage < totalPages-1 CLEAR '' : 'none';
   } catch(e) {
     grid.innerHTML = `<div style="text-align:center;padding:30px;color:var(--accent2);font-size:11px;grid-column:1/-1;">Error loading library: ${e.message}</div>`;
   }
@@ -1805,23 +1804,23 @@ function tgLibPage(dir) {
 }
 
 async function tgLibDownload(fileId, name) {
-  notify('Preparing downloadÃ¢â‚¬Â¦', 'Ã¢Â¬â€¡');
+  notify('Preparing download…', '⬇');
   window.open(`/api/tgfile/${fileId}`, '_blank');
 }
 
 async function tgLibRebuild() {
-  notify('Rebuilding from Telegram historyÃ¢â‚¬Â¦', 'Ã°Å¸â€Æ’', 5000);
+  notify('Rebuilding from Telegram history…', '🔃', 5000);
   try {
     const r = await fetch('/api/tgrebuild', {method:'POST'});
     const d = await r.json();
-    notify(`Rebuilt: ${d.count} files found`, 'Ã¢Å“â€¦');
+    notify(`Rebuilt: ${d.count} files found`, '✅');
     tgLibLoad(0);
   } catch(e) {
-    notify('Rebuild failed: ' + e.message, 'Ã¢ÂÅ’');
+    notify('Rebuild failed: ' + e.message, '❌');
   }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ SOURCE MANAGEMENT Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── SOURCE MANAGEMENT ─────────────────────────────────────────────────────
 let sourcesData = {};
 
 async function loadSources() {
@@ -1838,15 +1837,15 @@ function renderSourceGrid() {
   grid.innerHTML = Object.entries(sourcesData).map(([key, s]) => `
     <div onclick="toggleSource('${key}')" id="src_${key}" style="
       padding:10px 12px;border-radius:8px;cursor:pointer;
-      border:1px solid ${s.enabled ? 'var(--accent)' : 'var(--border)'};
-      background:${s.enabled ? 'rgba(0,229,190,0.08)' : 'var(--bg)'};
+      border:1px solid ${s.enabled CLEAR 'var(--accent)' : 'var(--border)'};
+      background:${s.enabled CLEAR 'rgba(0,229,190,0.08)' : 'var(--bg)'};
       transition:all .2s;">
-      <div style="font-size:11px;font-weight:700;color:${s.enabled ? 'var(--accent)' : 'var(--text2)'};">${s.label}</div>
+      <div style="font-size:11px;font-weight:700;color:${s.enabled CLEAR 'var(--accent)' : 'var(--text2)'};">${s.label}</div>
       <div style="font-size:9px;color:var(--text3);margin-top:3px;">
-        ${s.image ? 'Ã°Å¸â€“Â¼ Image' : ''} ${s.video ? 'Ã°Å¸Å½Â¬ Video' : ''} ${s.mature ? 'Ã°Å¸â€Å¾ Mature' : 'Ã¢Å“â€¦ SFW'}
+        ${s.image CLEAR '🖼 Image' : ''} ${s.video CLEAR '🎬 Video' : ''} ${s.mature CLEAR '🔞 Mature' : '✅ SFW'}
       </div>
-      <div style="font-size:9px;margin-top:4px;color:${s.enabled ? 'var(--accent)' : 'var(--text3)'};">
-        ${s.enabled ? 'Ã¢â€”Â ON' : 'Ã¢â€”â€¹ OFF'}
+      <div style="font-size:9px;margin-top:4px;color:${s.enabled CLEAR 'var(--accent)' : 'var(--text3)'};">
+        ${s.enabled CLEAR '● ON' : '○ OFF'}
       </div>
     </div>
   `).join('');
@@ -1874,7 +1873,7 @@ async function loadCookies() {
     savedCookieDomains = d.domains || [];
     renderCookieGuides();
     renderCookieDomains();
-    updateCookieGuideText(document.getElementById('cookieDomain')?.value || '');
+    updateCookieGuideText(document.getElementById('cookieDomain')CLEAR.value || '');
   } catch(e) {
     console.error('Cookie load error:', e);
   }
@@ -1899,7 +1898,7 @@ function renderCookieDomains() {
     return;
   }
   el.innerHTML = savedCookieDomains.map(item => {
-    const names = Array.isArray(item.names) && item.names.length ? ` · ${escapeHtml(item.names.join(', '))}` : '';
+    const names = Array.isArray(item.names) && item.names.length CLEAR ` · ${escapeHtml(item.names.join(', '))}` : '';
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);margin-bottom:6px;">
       <div style="flex:1;min-width:0;">
         <div style="font-size:11px;font-weight:700;color:var(--text2);">${escapeHtml(item.domain)}</div>
@@ -1914,7 +1913,7 @@ function renderCookieDomains() {
 function updateCookieGuideText(domain) {
   const guideEl = document.getElementById('cookieGuideText');
   if(!guideEl) return;
-  const normalized = normalizeCookieDomain(domain || document.getElementById('cookieDomain')?.value || '');
+  const normalized = normalizeCookieDomain(domain || document.getElementById('cookieDomain')CLEAR.value || '');
   const guide = cookieGuides[normalized];
   guideEl.textContent = guide || 'Paste a raw Cookie header or a JSON object with cookie name/value pairs.';
 }
@@ -1941,7 +1940,7 @@ async function loadCookieEditor(domain) {
   document.getElementById('cookieDomain').value = d.domain || target;
   document.getElementById('cookieText').value = d.cookie_header || '';
   updateCookieGuideText(d.domain || target);
-  notify(d.cookie_header ? `Loaded cookies for ${d.domain}` : `No saved cookies for ${target}`, d.cookie_header ? 'OK' : 'INFO');
+  notify(d.cookie_header CLEAR `Loaded cookies for ${d.domain}` : `No saved cookies for ${target}`, d.cookie_header CLEAR 'OK' : 'INFO');
 }
 
 async function saveCookies() {
@@ -1982,7 +1981,7 @@ async function deleteCookies(domain) {
   updateCookieGuideText(document.getElementById('cookieDomain').value);
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ TELEGRAM CHANNEL MANAGEMENT Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── TELEGRAM CHANNEL MANAGEMENT ───────────────────────────────────────────────
 let tgChannels = {};
 
 async function loadTgChannels() {
@@ -2001,23 +2000,23 @@ function renderTgChannels() {
   if (!entries.length) { el.innerHTML = '<div style="font-size:10px;color:var(--text3);">No channels configured yet.</div>'; return; }
   el.innerHTML = entries.map(([name, ch]) => `
     <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;
-      border:1px solid ${ch.active ? 'var(--accent)' : 'var(--border)'};
-      background:${ch.active ? 'rgba(0,229,190,0.08)' : 'var(--bg)'};margin-bottom:6px;">
+      border:1px solid ${ch.active CLEAR 'var(--accent)' : 'var(--border)'};
+      background:${ch.active CLEAR 'rgba(0,229,190,0.08)' : 'var(--bg)'};margin-bottom:6px;">
       <div style="flex:1;">
-        <div style="font-size:11px;font-weight:700;color:${ch.active ? 'var(--accent)' : 'var(--text2)'};">
-          ${ch.active ? 'Ã¢â€”Â ' : 'Ã¢â€”â€¹ '}${name}
+        <div style="font-size:11px;font-weight:700;color:${ch.active CLEAR 'var(--accent)' : 'var(--text2)'};">
+          ${ch.active CLEAR '● ' : '○ '}${name}
         </div>
         <div style="font-size:9px;color:var(--text3);">Chat ID: ${ch.chat_id}</div>
       </div>
-      ${!ch.active ? `<button class="btn btn-teal btn-sm" onclick="selectTgChannel('${name}')" style="padding:4px 10px;font-size:9px;">USE</button>` : '<span style="font-size:9px;color:var(--accent);">ACTIVE</span>'}
-      ${name !== 'default' ? `<button class="btn btn-ghost btn-sm" onclick="deleteTgChannel('${name}')" style="padding:4px 8px;font-size:9px;">Ã°Å¸â€”â€˜</button>` : ''}
+      ${!ch.active CLEAR `<button class="btn btn-teal btn-sm" onclick="selectTgChannel('${name}')" style="padding:4px 10px;font-size:9px;">USE</button>` : '<span style="font-size:9px;color:var(--accent);">ACTIVE</span>'}
+      ${name !== 'default' CLEAR `<button class="btn btn-ghost btn-sm" onclick="deleteTgChannel('${name}')" style="padding:4px 8px;font-size:9px;">🗑</button>` : ''}
     </div>
   `).join('');
 }
 
 async function selectTgChannel(name) {
   await fetch('/api/telegram/channels/select', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
-  notify(`Switched to channel: ${name}`, 'Ã¢Å“Ë†Ã¯Â¸Â');
+  notify(`Switched to channel: ${name}`, '✈️');
   loadTgChannels();
 }
 
@@ -2025,14 +2024,14 @@ async function addTgChannel() {
   const name   = document.getElementById('tgChName').value.trim();
   const chatId = document.getElementById('tgChChatId').value.trim();
   const token  = document.getElementById('tgChToken').value.trim();
-  if (!name || !chatId) { notify('Name and Chat ID required', 'Ã¢Å¡Â Ã¯Â¸Â'); return; }
+  if (!name || !chatId) { notify('Name and Chat ID required', '⚠️'); return; }
   const r = await fetch('/api/telegram/channels', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({name, chat_id: chatId, token, active: false})
   });
   const d = await r.json();
   if (d.ok) {
-    notify(`Channel "${name}" added!`, 'Ã¢Å“â€¦');
+    notify(`Channel "${name}" added!`, '✅');
     document.getElementById('tgChName').value = '';
     document.getElementById('tgChChatId').value = '';
     document.getElementById('tgChToken').value = '';
@@ -2042,7 +2041,7 @@ async function addTgChannel() {
 
 async function deleteTgChannel(name) {
   await fetch('/api/telegram/channels/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})});
-  notify(`Channel "${name}" deleted`, 'Ã°Å¸â€”â€˜');
+  notify(`Channel "${name}" deleted`, '🗑');
   loadTgChannels();
 }
 
@@ -2052,12 +2051,12 @@ async function tgRefresh() {
     const d = await r.json();
     const badge = document.getElementById('tgStatusBadge');
     if (d.enabled) {
-      badge.textContent = 'Ã¢Å“â€¦ CONNECTED';
+      badge.textContent = '✅ CONNECTED';
       badge.style.background = 'rgba(0,245,196,.1)';
       badge.style.borderColor = 'var(--accent)';
       badge.style.color = 'var(--accent)';
     } else if (d.bot_set || d.chat_set) {
-      badge.textContent = 'Ã¢Å¡Â Ã¯Â¸Â INCOMPLETE';
+      badge.textContent = '⚠️ INCOMPLETE';
       badge.style.background = 'rgba(255,200,0,.1)';
       badge.style.borderColor = '#ffc800';
       badge.style.color = '#ffc800';
@@ -2068,7 +2067,7 @@ async function tgRefresh() {
       badge.style.color = 'var(--text3)';
     }
     if (d.queue_len > 0) {
-      document.getElementById('tgQueueTxt').textContent = `Ã°Å¸â€œÂ¤ Uploading: ${d.queue_len} file(s) in queue`;
+      document.getElementById('tgQueueTxt').textContent = `📤 Uploading: ${d.queue_len} file(s) in queue`;
     } else {
       document.getElementById('tgQueueTxt').textContent = '';
     }
@@ -2078,13 +2077,13 @@ async function tgRefresh() {
 async function tgTest() {
   const r = await fetch('/api/telegram/test', {method:'POST'});
   const d = await r.json();
-  if (d.ok) notify('Ã¢Å“â€¦ Test message sent to Telegram!', 'Ã°Å¸â€œÂ²', 4000);
-  else notify('Ã¢ÂÅ’ Failed: ' + (d.error||'Check bot token & chat ID'), 'Ã¢ÂÅ’', 6000);
+  if (d.ok) notify('✅ Test message sent to Telegram!', '📲', 4000);
+  else notify('❌ Failed: ' + (d.error||'Check bot token & chat ID'), '❌', 6000);
 }
 
 // Poll Telegram status every 5s when auto tab is open
 setInterval(() => {
-  if (document.getElementById('sec-auto')?.classList.contains('active')) {
+  if (document.getElementById('sec-auto')CLEAR.classList.contains('active')) {
     tgRefresh();
   }
 }, 5000);
