@@ -176,7 +176,7 @@ def _cookie_header_from_map(cookie_map):
 def _extra_cookie_string(url):
     host = urlparse(url).netloc.lower()
     if "deviantart.com" in host or "wixmp.com" in host:
-        return "agegate_state=1; userinfo=mature_content_filter%3D0; da_is_logged_in=0"
+        return "agegate_state=1; userinfo=mature_content_filter%3D0"
     if "reddit.com" in host or "redd.it" in host:
         return "over18=1"
     if "gelbooru.com" in host:
@@ -206,6 +206,28 @@ def _cookie_header_for_url(url):
     merged.update(_parse_cookie_string(_extra_cookie_string(url)))
     merged.update(_saved_cookies_for_url(url))
     return _cookie_header_from_map(merged)
+
+def _write_cookie_file_for_url(url):
+    """Write cookies to a Netscape format file for yt-dlp to read."""
+    merged = {}
+    merged.update(_parse_cookie_string(_extra_cookie_string(url)))
+    merged.update(_saved_cookies_for_url(url))
+    
+    if not merged:
+        return None
+        
+    domain = urlparse(url).netloc.lower()
+    if domain.startswith("www."):
+        domain = domain[4:]
+        
+    import tempfile
+    import os
+    fd, path = tempfile.mkstemp(suffix=".txt")
+    with os.fdopen(fd, "w") as f:
+        f.write("# Netscape HTTP Cookie File\n")
+        for k, v in merged.items():
+            f.write(f".{domain}\tTRUE\t/\tFALSE\t253402300799\t{k}\t{v}\n")
+    return path
 
 
 def _inject_god_mode_cookies(url, dl_id=None):
@@ -1891,15 +1913,18 @@ def _ydlp(url, quality, fmt, filename, audio_only, no_wm, dl_id):
         "concurrent_fragment_downloads": 4,
         "http_headers": extra_headers,
     }
+    cookie_file = None
     if cookie_header:
-        opts["http_headers"]["Cookie"] = cookie_header
+        cookie_file = _write_cookie_file_for_url(url)
+        if cookie_file:
+            opts["cookiefile"] = cookie_file
     elif use_browser_cookies:
         opts["cookiesfrombrowser"] = ("chrome",)
     if audio_only:
         opts["postprocessors"].append({"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "320"})
 
     if saved_cookie_count:
-        _log_strategy(dl_id, f"yt-dlp using {saved_cookie_count} saved cookies")
+        _log_strategy(dl_id, f"yt-dlp using {saved_cookie_count} saved cookies via cookiefile")
     elif use_browser_cookies:
         _log_strategy(dl_id, "yt-dlp using Chrome browser cookies")
     else:
@@ -1908,6 +1933,9 @@ def _ydlp(url, quality, fmt, filename, audio_only, no_wm, dl_id):
     if not YT_DLP_AVAILABLE:
         _log_strategy(dl_id, "yt-dlp is not installed on this system", "error")
         active_downloads[dl_id].update({"status": "error", "error": "yt_dlp not installed on server"})
+        if cookie_file and os.path.exists(cookie_file):
+            try: os.remove(cookie_file)
+            except: pass
         return
 
     try:
@@ -1929,18 +1957,22 @@ def _ydlp(url, quality, fmt, filename, audio_only, no_wm, dl_id):
         _log_strategy(dl_id, f"yt-dlp failed: {err_str}", "warn")
         if "deviantart.com" in url.lower():
             active_downloads[dl_id].update({"status": "error", "error": f"yt-dlp: {err_str}"})
-            return
-        try:
-            r2 = req.get(url, headers=HEADERS, timeout=15)
-            og = re.search(r'<meta property="og:image"\s+content="([^"]+)"', r2.text)
-            if og:
-                _log_strategy(dl_id, "yt-dlp failed, falling back to og:image")
-                _direct(og.group(1).replace("&amp;", "&"), filename or "media", dl_id)
-            else:
-                active_downloads[dl_id].update({"status": "error", "error": err_str})
-        except Exception as e2:
-            _log_strategy(dl_id, f"Fallback request failed: {e2}", "error")
-            active_downloads[dl_id].update({"status": "error", "error": str(e2)})
+        else:
+            try:
+                r2 = req.get(url, headers=HEADERS, timeout=15)
+                og = re.search(r'<meta property="og:image"\s+content="([^"]+)"', r2.text)
+                if og:
+                    _log_strategy(dl_id, "yt-dlp failed, falling back to og:image")
+                    _direct(og.group(1).replace("&amp;", "&"), filename or "media", dl_id)
+                else:
+                    active_downloads[dl_id].update({"status": "error", "error": err_str})
+            except Exception as e2:
+                _log_strategy(dl_id, f"Fallback request failed: {e2}", "error")
+                active_downloads[dl_id].update({"status": "error", "error": str(e2)})
+    finally:
+        if cookie_file and __import__("os").path.exists(cookie_file):
+            try: __import__("os").remove(cookie_file)
+            except: pass
 
 @app.route("/api/progress/<dl_id>")
 def get_progress(dl_id): return jsonify(active_downloads.get(dl_id,{"status":"not_found"}))
