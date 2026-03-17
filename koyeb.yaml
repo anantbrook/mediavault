@@ -1,0 +1,18 @@
+services:
+  - name: mediavault
+    type: web
+    runtime: python
+    instance_type: free
+    regions:
+      - was
+    build:
+      buildpack: python
+      build_command: pip install -r requirements.txt
+    run:
+      command: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 300
+    ports:
+      - port: 8000
+        protocol: http
+    health_checks:
+      - path: /
+        port: 8000

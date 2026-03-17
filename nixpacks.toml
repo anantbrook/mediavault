@@ -1,0 +1,8 @@
+[phases.install]
+cmds = [
+  "python3 -m venv /app/venv",
+  "/app/venv/bin/pip install flask yt-dlp requests pillow gunicorn flask-cors beautifulsoup4 lxml curl-cffi"
+]
+
+[start]
+cmd = "/app/venv/bin/gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 300"

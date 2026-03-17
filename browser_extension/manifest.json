@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "MediaVault Downloader",
+  "version": "1.0",
+  "description": "Send images and videos to MediaVault directly from the right-click menu.",
+  "permissions": [
+    "contextMenus",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:5050/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "MediaVault Settings"
+  },
+  "icons": {
+    "48": "icon.png"
+  }
+}
