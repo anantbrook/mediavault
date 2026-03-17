@@ -549,10 +549,17 @@ def _try_cffi(url: str, dest: Path, progress_cb):
         url_lc = url.lower().split("?")[0]
         is_vid = any(url_lc.endswith(x) for x in (".mp4",".webm",".mkv",".mov",".flv"))
         cffi_timeout = (30, None) if is_vid else (20, 120)
-        r = cffi_req.get(
+        # Add cookies to cffi session
+        s = cffi_req.Session(impersonate=random.choice(["chrome124", "safari17_0", "edge101"]))
+        domain = urlparse(url).netloc.lstrip("www.")
+        if domain in _cookie_files:
+            # Need to get dict back from standard session to inject here
+            for k, v in _session(domain).cookies.get_dict().items():
+                s.cookies.set(k, v, domain="." + domain)
+                
+        r = s.get(
             url,
             headers=_headers(url),
-            impersonate="chrome124",
             timeout=cffi_timeout,
             stream=True,
             allow_redirects=True,
@@ -918,7 +925,12 @@ def download(
     if CFFI_AVAILABLE:
         # Re-extract after bypassing Cloudflare
         try:
-            r = cffi_req.get(url, headers=_headers(url), impersonate="chrome124", timeout=20)
+            s = cffi_req.Session(impersonate=random.choice(["chrome124", "safari17_0", "edge101"]))
+            domain = urlparse(url).netloc.lstrip("www.")
+            if domain in _cookie_files:
+                for k, v in _session(domain).cookies.get_dict().items():
+                    s.cookies.set(k, v, domain="." + domain)
+            r = s.get(url, headers=_headers(url), timeout=20)
             if r.status_code == 200:
                 html = r.text
                 og = re.search(r'<meta[^>]+property=["\']og:(?:image|video)["\'][^>]+content=["\']([^"\']+)["\']', html, re.I)
@@ -949,10 +961,24 @@ def extract_url(url: str) -> Optional[str]:
     return found
 
 
+_cookie_files = {}
+
 def inject_cookies(domain: str, cookies: dict):
-    """Inject cookies into the session for a specific domain."""
+    """Inject cookies into the session and save to a cookiefile for yt-dlp/curl_cffi."""
     normalized = domain.lstrip("www.")
     sess = _session(normalized)
     for k, v in cookies.items():
         sess.cookies.set(k, v, domain=normalized)
+        
+    import tempfile, os
+    if normalized in _cookie_files and os.path.exists(_cookie_files[normalized]):
+        try: os.remove(_cookie_files[normalized])
+        except: pass
+        
+    fd, path = tempfile.mkstemp(suffix=".txt")
+    with os.fdopen(fd, "w") as f:
+        f.write("# Netscape HTTP Cookie File\n")
+        for k, v in cookies.items():
+            f.write(f".{normalized}\tTRUE\t/\tFALSE\t253402300799\t{k}\t{v}\n")
+    _cookie_files[normalized] = path
 
