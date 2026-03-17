@@ -1,223 +1,129 @@
-from __future__ import annotations
-"""
-media_analyzer.py
-─────────────────
-Analyze downloaded media files:
- - Detect format, resolution, file size
- - Generate thumbnails for video files
- - Compute perceptual hash (pHash) for duplicate detection
- - EXIF data extraction
- - Quality scoring (resolution + file size combined)
-"""
-
 import os
-import io
+import time
 import json
-import hashlib
-import struct
+import threading
 from pathlib import Path
-from typing import Optional
+from PIL import Image
 
-# Try importing PIL — used for image analysis
 try:
-    from PIL import Image, ExifTags
-    PIL_AVAILABLE = True
+    import imagehash
+    IMAGEHASH_AVAILABLE = True
 except ImportError:
-    PIL_AVAILABLE = False
+    IMAGEHASH_AVAILABLE = False
 
+_DEDUP_FILE = Path("/tmp/mediavault_dedup.json")
+# mapping of filepath to its hash
+_dedup_db = {}
+_dedup_lock = threading.Lock()
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  FILE INFO
-# ─────────────────────────────────────────────────────────────────────────────
-def get_file_info(filepath: Path | str) -> dict:
-    """Return metadata dict for any media file."""
-    filepath = Path(filepath)
-    if not filepath.exists():
-        return {"error": "File not found"}
+def _load_dedup_db():
+    global _dedup_db
+    try:
+        if _DEDUP_FILE.exists():
+            _dedup_db = json.loads(_DEDUP_FILE.read_text())
+    except Exception as e:
+        print(f"[DEDUP] Load error: {e}")
 
-    ext = filepath.suffix.lower()
-    size = filepath.stat().st_size
-    info = {
-        "name":     filepath.name,
-        "path":     str(filepath),
-        "size":     size,
-        "size_str": _fmt_size(size),
-        "ext":      ext,
-        "is_video": ext in (".mp4", ".webm", ".mov", ".gif", ".mkv", ".avi"),
-        "is_image": ext in (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".avif"),
-        "width":    None,
-        "height":   None,
-        "quality_score": 0,
-    }
+def _save_dedup_db():
+    try:
+        with _dedup_lock:
+            _DEDUP_FILE.write_text(json.dumps(_dedup_db))
+    except Exception as e:
+        print(f"[DEDUP] Save error: {e}")
 
-    if info["is_image"] and PIL_AVAILABLE:
+_load_dedup_db()
+
+def compute_hash(filepath):
+    """Computes a perceptual hash for an image or a dummy hash for video."""
+    if not IMAGEHASH_AVAILABLE:
+        return None
+    
+    filepath = str(filepath)
+    ext = filepath.lower().split('.')[-1]
+    
+    if ext in ("jpg", "jpeg", "png", "bmp", "webp"):
         try:
             with Image.open(filepath) as img:
-                info["width"]  = img.width
-                info["height"] = img.height
-                info["mode"]   = img.mode
-                info["format"] = img.format
-                info["quality_score"] = _quality_score(img.width, img.height, size)
-                exif = _get_exif(img)
-                if exif:
-                    info["exif"] = exif
+                return str(imagehash.phash(img))
         except Exception as e:
-            info["image_error"] = str(e)
-
-    elif info["is_image"] and not PIL_AVAILABLE:
-        # Fallback: parse image dimensions from header bytes
-        dims = _read_image_dims(filepath)
-        if dims:
-            info["width"], info["height"] = dims
-            info["quality_score"] = _quality_score(dims[0], dims[1], size)
-
-    return info
-
-
-def _fmt_size(b: int) -> str:
-    if b >= 1_073_741_824: return f"{b/1_073_741_824:.1f} GB"
-    if b >= 1_048_576:     return f"{b/1_048_576:.1f} MB"
-    if b >= 1024:          return f"{b/1024:.0f} KB"
-    return f"{b} B"
-
-
-def _quality_score(w: int, h: int, size: int) -> int:
-    """Higher resolution + larger file = higher score (0–100)."""
-    mp = (w * h) / 1_000_000  # megapixels
-    mb = size / 1_048_576      # file size MB
-    score = min(100, int(mp * 10 + mb * 5))
-    return score
-
-
-def _get_exif(img) -> dict:
-    """Extract readable EXIF tags from a PIL Image."""
-    try:
-        raw = img._getexif()
-        if not raw:
-            return {}
-        return {
-            ExifTags.TAGS.get(k, k): str(v)
-            for k, v in raw.items()
-            if k in ExifTags.TAGS
-        }
-    except Exception:
-        return {}
-
-
-def _read_image_dims(path: Path) -> Optional[tuple[int, int]]:
-    """Read image dimensions without PIL by parsing file headers."""
-    try:
-        with open(path, "rb") as f:
-            header = f.read(26)
-        ext = path.suffix.lower()
-        if ext in (".jpg", ".jpeg"):
-            # JPEG — find SOF marker
-            with open(path, "rb") as f:
-                data = f.read(4096)
-            i = 0
-            while i < len(data) - 8:
-                if data[i] == 0xFF and data[i+1] in (0xC0, 0xC2):
-                    h = struct.unpack(">H", data[i+5:i+7])[0]
-                    w = struct.unpack(">H", data[i+7:i+9])[0]
-                    return w, h
-                i += 1
-        elif ext == ".png":
-            if header[:8] == b'\x89PNG\r\n\x1a\n':
-                w = struct.unpack(">I", header[16:20])[0]
-                h = struct.unpack(">I", header[20:24])[0]
-                return w, h
-        elif ext == ".webp":
-            if header[8:12] == b"WEBP":
-                if header[12:16] == b"VP8 ":
-                    w = struct.unpack("<H", header[26:28])[0] & 0x3FFF
-                    h = struct.unpack("<H", header[28:30])[0] & 0x3FFF
-                    return w, h
-    except Exception:
-        pass
+            print(f"[DEDUP] Hash error for {filepath}: {e}")
+            return None
+    elif ext in ("mp4", "webm", "mkv", "mov", "flv", "gif"):
+        # For video/gif, use file size as a basic hash for now
+        # Perceptual hashing of video requires frame extraction
+        try:
+            return f"video_{os.path.getsize(filepath)}"
+        except Exception:
+            return None
     return None
 
+def is_duplicate(filepath):
+    """Checks if the file is a duplicate based on its hash."""
+    h = compute_hash(filepath)
+    if not h:
+        return False, None
+    
+    with _dedup_lock:
+        for existing_path, existing_hash in _dedup_db.items():
+            if existing_path != str(filepath) and existing_hash == h:
+                # verify existing file still exists
+                if os.path.exists(existing_path):
+                    return True, existing_path
+                else:
+                    # clean up dangling reference
+                    del _dedup_db[existing_path]
+                    _save_dedup_db()
+                    return False, None
+    return False, None
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  PERCEPTUAL HASH — duplicate detection without PIL
-# ─────────────────────────────────────────────────────────────────────────────
-def phash_file(filepath: Path | str) -> Optional[str]:
-    """
-    Compute a simple perceptual hash of an image for duplicate detection.
-    Falls back to SHA256 if PIL not available.
-    """
-    filepath = Path(filepath)
-    if not filepath.exists():
-        return None
+def add_to_db(filepath):
+    h = compute_hash(filepath)
+    if h:
+        with _dedup_lock:
+            _dedup_db[str(filepath)] = h
+        _save_dedup_db()
+        return True
+    return False
 
-    if PIL_AVAILABLE:
-        try:
-            with Image.open(filepath) as img:
-                # Resize to 8x8 grayscale
-                small = img.convert("L").resize((8, 8), Image.LANCZOS)
-                pixels = list(small.getdata())
-                avg = sum(pixels) / len(pixels)
-                bits = "".join("1" if p > avg else "0" for p in pixels)
-                return hex(int(bits, 2))[2:].zfill(16)
-        except Exception:
-            pass
+def remove_from_db(filepath):
+    with _dedup_lock:
+        if str(filepath) in _dedup_db:
+            del _dedup_db[str(filepath)]
+            _save_dedup_db()
 
-    # Fallback: SHA256 of first 64KB
-    try:
-        with open(filepath, "rb") as f:
-            return hashlib.sha256(f.read(65536)).hexdigest()[:16]
-    except Exception:
-        return None
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  THUMBNAIL GENERATION
-# ─────────────────────────────────────────────────────────────────────────────
-def generate_thumbnail(
-    filepath: Path | str,
-    size: tuple[int, int] = (256, 256),
-    output_dir: Optional[Path] = None,
-) -> Optional[Path]:
-    """Generate a thumbnail for an image file."""
-    if not PIL_AVAILABLE:
-        return None
-    filepath = Path(filepath)
-    if not filepath.exists():
-        return None
-    out_dir = output_dir or filepath.parent / "thumbs"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    thumb_path = out_dir / f"thumb_{filepath.stem}.jpg"
-
-    try:
-        with Image.open(filepath) as img:
-            img.thumbnail(size, Image.LANCZOS)
-            img.convert("RGB").save(thumb_path, "JPEG", quality=80)
-        return thumb_path
-    except Exception:
-        return None
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  SCAN DOWNLOAD FOLDER
-# ─────────────────────────────────────────────────────────────────────────────
-def scan_folder(folder: Path | str) -> list[dict]:
-    """Scan a folder and return info for all media files."""
-    folder = Path(folder)
-    results = []
-    media_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp",
-                  ".mp4", ".webm", ".mov", ".mkv", ".avi"}
-    for f in sorted(folder.iterdir()):
-        if f.suffix.lower() in media_exts:
-            results.append(get_file_info(f))
-    return results
-
-
-def find_duplicates(folder: Path | str) -> list[list[str]]:
-    """Find duplicate files in a folder using pHash."""
-    folder = Path(folder)
-    hashes: dict[str, list[str]] = {}
+def scan_folder(folder_path):
+    """Scans a folder and builds the deduplication database."""
+    folder = Path(folder_path)
+    if not folder.exists(): return
+    count = 0
     for f in folder.iterdir():
-        if f.suffix.lower() in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
-            h = phash_file(f)
-            if h:
-                hashes.setdefault(h, []).append(str(f))
-    return [paths for paths in hashes.values() if len(paths) > 1]
+        if f.is_file():
+            if str(f) not in _dedup_db:
+                add_to_db(f)
+                count += 1
+    print(f"[DEDUP] Scanned {count} new files in {folder_path}")
+
+def find_all_duplicates():
+    """Returns a list of duplicate groups (list of filepaths that are identical)."""
+    hash_to_paths = {}
+    with _dedup_lock:
+        for p, h in _dedup_db.items():
+            if os.path.exists(p):
+                hash_to_paths.setdefault(h, []).append(p)
+    
+    duplicates = [paths for h, paths in hash_to_paths.items() if len(paths) > 1]
+    return duplicates
+
+def compare_hashes(h1, h2, threshold=5):
+    """Compares two hashes and returns True if they are similar within a threshold."""
+    if not IMAGEHASH_AVAILABLE or not h1 or not h2:
+        return False
+    try:
+        # Convert hex strings back to imagehash objects to compute difference
+        ih1 = imagehash.hex_to_hash(h1)
+        ih2 = imagehash.hex_to_hash(h2)
+        diff = ih1 - ih2
+        return diff <= threshold
+    except Exception as e:
+        print(f"[DEDUP] Hash compare error: {e}")
+        return False

@@ -28,6 +28,33 @@ except ImportError:
     RESOLVER_AVAILABLE = False
     print('[RESOLVER] url_resolver.py not found')
 
+# ── Media Analyzer (Deduplication, Tagging) ───────────────────────────
+try:
+    import media_analyzer as _ma
+    MEDIA_ANALYZER_AVAILABLE = True
+    print('[MEDIA] Media analyzer loaded ✅')
+except ImportError:
+    MEDIA_ANALYZER_AVAILABLE = False
+    print('[MEDIA] media_analyzer.py not found')
+
+# ── Auto-Upscaler ─────────────────────────────────────────────────────────────
+try:
+    import upscaler as _up
+    UPSCALER_AVAILABLE = True
+    print('[UPSCALER] Upscaler loaded ✅')
+except ImportError:
+    UPSCALER_AVAILABLE = False
+    print('[UPSCALER] upscaler.py not found')
+
+# ── AI Auto-Tagger ───────────────────────────────────────────────────────────
+try:
+    import tagger as _tg_ai
+    TAGGER_AVAILABLE = True
+    print('[TAGGER] Auto-Tagger loaded ✅')
+except ImportError:
+    TAGGER_AVAILABLE = False
+    print('[TAGGER] tagger.py not found')
+
 # ── GOD MODE — 10-strategy universal download engine ─────────────────────────
 try:
     import god_mode as _gm
@@ -119,6 +146,35 @@ def _log_strategy(dl_id, message, level="info"):
 
 def _mark_download_done(dl_id, source_url, fpath, extractor, title=None, thumbnail=""):
     fpath = str(fpath)
+    
+    # AI Auto-Tagging
+    auto_tags = []
+    if TAGGER_AVAILABLE:
+        try:
+            # tag in a thread to not block the main process, or do it inline
+            # For simplicity we'll tag inline if it's an image. First load could be slow.
+            auto_tags = _tg_ai.auto_tag(fpath)
+            if auto_tags:
+                _log_strategy(dl_id, f"AI Auto-Tags: {', '.join(auto_tags)}", "info")
+        except Exception as e:
+            pass
+
+    # Check for deduplication before finalizing
+    if MEDIA_ANALYZER_AVAILABLE:
+        # compute hash and check
+        is_dup, existing_path = _ma.is_duplicate(fpath)
+        if is_dup:
+            _log_strategy(dl_id, f"DUPLICATE FOUND! Matches existing file: {os.path.basename(existing_path)}", "warn")
+            # we can delete the newly downloaded file and point to the existing one
+            try:
+                os.remove(fpath)
+            except Exception as e:
+                pass
+            fpath = existing_path
+
+        # Add to DB
+        _ma.add_to_db(fpath)
+    
     fsize = os.path.getsize(fpath) if os.path.exists(fpath) else 0
     filename = os.path.basename(fpath)
     active_downloads.setdefault(dl_id, _new_download_state())
@@ -134,6 +190,10 @@ def _mark_download_done(dl_id, source_url, fpath, extractor, title=None, thumbna
         active_downloads[dl_id]["title"] = title
     if thumbnail:
         active_downloads[dl_id]["thumbnail"] = thumbnail
+    # Insert tags into active download state
+    if auto_tags:
+        active_downloads[dl_id]["tags"] = auto_tags
+        
     _record_download_history(
         dl_id,
         title or os.path.splitext(filename)[0],
@@ -2049,8 +2109,64 @@ def list_files():
 @app.route("/api/delete/<filename>", methods=["DELETE"])
 def delete_file(filename):
     fp = DOWNLOAD_DIR / filename
-    if fp.exists(): fp.unlink(); return jsonify({"ok":True})
+    if fp.exists(): 
+        fp.unlink()
+        if MEDIA_ANALYZER_AVAILABLE:
+            _ma.remove_from_db(fp)
+        return jsonify({"ok":True})
     return jsonify({"error":"Not found"}), 404
+
+# ── Deduplication API ─────────────────────────────────────────────────────────
+@app.route("/api/deduplication/scan", methods=["POST"])
+def dedup_scan():
+    if not MEDIA_ANALYZER_AVAILABLE:
+        return jsonify({"error": "Media Analyzer not available"}), 500
+    
+    # Scan the DOWNLOAD_DIR
+    threading.Thread(target=_ma.scan_folder, args=(DOWNLOAD_DIR,), daemon=True).start()
+    return jsonify({"ok": True, "msg": "Started scanning folder for duplicates"})
+
+@app.route("/api/deduplication/duplicates", methods=["GET"])
+def dedup_duplicates():
+    if not MEDIA_ANALYZER_AVAILABLE:
+        return jsonify({"error": "Media Analyzer not available"}), 500
+    
+    dups = _ma.find_all_duplicates()
+    return jsonify({"duplicates": dups})
+
+# ── AI Auto-Tagging API ───────────────────────────────────────────────────────
+@app.route("/api/tag/<filename>", methods=["GET", "POST"])
+def tag_file(filename):
+    if not TAGGER_AVAILABLE:
+        return jsonify({"error": "Auto-Tagger not loaded"}), 500
+    
+    fp = DOWNLOAD_DIR / filename
+    if not fp.exists():
+        return jsonify({"error": "File not found"}), 404
+        
+    tags = _tg_ai.auto_tag(str(fp))
+    return jsonify({"ok": True, "tags": tags})
+
+# ── Auto-Upscaler API ────────────────────────────────────────────────────────
+@app.route("/api/upscale/<filename>", methods=["POST"])
+def upscale_file(filename):
+    if not UPSCALER_AVAILABLE:
+        return jsonify({"error": "Upscaler not loaded"}), 500
+    
+    fp = DOWNLOAD_DIR / filename
+    if not fp.exists():
+        return jsonify({"error": "File not found"}), 404
+        
+    def _do_upscale():
+        print(f"Upscaling {filename}...")
+        ok, result = _up.upscale_image(fp, scale=2)
+        if ok:
+            print(f"Upscale successful: {result}")
+        else:
+            print(f"Upscale failed: {result}")
+            
+    threading.Thread(target=_do_upscale, daemon=True).start()
+    return jsonify({"ok": True, "msg": f"Started upscaling {filename}"})
 
 @app.route("/api/open_folder")
 def open_folder():
@@ -2340,6 +2456,85 @@ def _auto_engine():
             time.sleep(0.5)
 
     print("🛑 Auto-downloader stopped")
+
+
+# ── ARTIST STALKER ────────────────────────────────────────────────────────────
+import scheduler as _st
+
+@app.route("/api/stalker", methods=["GET"])
+def get_stalker_artists():
+    return jsonify({"artists": _st.get_artists()})
+
+@app.route("/api/stalker/add", methods=["POST"])
+def add_stalker_artist():
+    data = request.json or {}
+    source = data.get("source", "").strip().lower()
+    artist = data.get("artist", "").strip().lower()
+    if not source or not artist:
+        return jsonify({"error": "source and artist are required"}), 400
+    _st.add_artist(source, artist)
+    return jsonify({"ok": True, "artists": _st.get_artists()})
+
+@app.route("/api/stalker/remove", methods=["POST"])
+def remove_stalker_artist():
+    data = request.json or {}
+    source = data.get("source", "").strip().lower()
+    artist = data.get("artist", "").strip().lower()
+    _st.remove_artist(source, artist)
+    return jsonify({"ok": True, "artists": _st.get_artists()})
+
+def _stalker_engine():
+    """Background engine that periodically checks for new posts by tracked artists."""
+    print("🕵️ Artist Stalker started")
+    while True:
+        try:
+            artists = _st.get_artists()
+            for record in artists:
+                source = record["source"]
+                artist = record["artist"]
+                last_checked = record["last_checked"]
+                last_id = record["last_id"]
+
+                now = time.time()
+                # Check every 10 minutes (600s)
+                if now - last_checked < 600:
+                    continue
+
+                # To avoid complex Booru API paging, we just fetch page 0 for the tag: artist:xyz
+                # We reuse scrape_da_tag for this!
+                tag = f"artist:{artist}" if source != "deviantart" else artist
+                
+                # Fetch recent items
+                items = scrape_da_tag(tag, mature=True, sources=[source] if source != "deviantart" else None)
+                
+                max_score = 0
+                new_items = []
+                for item in items:
+                    score = item.get("score", 0)
+                    if score > max_score:
+                        max_score = score
+                    # For a simple check, we use score as ID proxy if no real ID, but ideally we'd track IDs
+                    # For now, we'll just download any item we haven't seen before.
+                    if not _is_seen(item["url"]):
+                        new_items.append(item)
+                
+                # Download new items
+                for item in new_items:
+                    print(f"[STALKER] Found new post for {artist} on {source}")
+                    _auto_download_item(item)
+                    _mark_seen(item["url"])
+                    time.sleep(5)
+                
+                _st.update_artist_state(source, artist, time.time(), max_score)
+        
+        except Exception as e:
+            print(f"Stalker engine error: {e}")
+        
+        # sleep 1 minute before next loop
+        time.sleep(60)
+
+# Start stalker engine thread
+threading.Thread(target=_stalker_engine, daemon=True).start()
 
 
 # ── AUTO API ROUTES ────────────────────────────────────────────────────────────
@@ -2708,6 +2903,60 @@ def _tg_hook_direct(url, fname, dl_id):
 
 
 # ── Telegram status + config API ──────────────────────────────────────────────
+
+@app.route("/api/telegram/reverse-search", methods=["POST"])
+def tg_reverse_search():
+    if not MEDIA_ANALYZER_AVAILABLE:
+        return jsonify({"error": "Media Analyzer required for reverse search"}), 500
+        
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+        
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "Empty file"}), 400
+
+    # Save temp file
+    temp_path = DOWNLOAD_DIR / f"temp_search_{uuid.uuid4().hex}.jpg"
+    file.save(temp_path)
+    
+    # Compute hash of uploaded file
+    target_hash = _ma.compute_hash(temp_path)
+    
+    matches = []
+    if target_hash:
+        # Currently _tg_db does not store hashes of TG files. 
+        # For a full system, you would compute hashes before TG upload and store them in _tg_db.
+        # As a fallback, we check against local files since we already have their hashes in _ma._dedup_db
+        with _ma._dedup_lock:
+            for filepath, existing_hash in _ma._dedup_db.items():
+                if _ma.compare_hashes(target_hash, existing_hash, threshold=10):
+                    matches.append(filepath)
+    
+    # Clean up temp
+    try:
+        temp_path.unlink()
+    except Exception:
+        pass
+        
+    if not matches:
+        return jsonify({"ok": True, "matches": [], "msg": "No matches found"})
+        
+    # Attempt to find TG file info for matched local files by name
+    # (Assuming local filenames match TG names or captions)
+    results = []
+    for match in matches:
+        filename = Path(match).name
+        # Search in TG DB
+        tg_info = next((r for r in _tg_db if r.get("name") == filename), None)
+        results.append({
+            "local_path": match,
+            "filename": filename,
+            "tg_info": tg_info
+        })
+
+    return jsonify({"ok": True, "matches": results})
+
 
 @app.route("/api/telegram/status")
 def tg_status():
