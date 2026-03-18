@@ -237,6 +237,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <button class="nav-btn" onclick="nav('sources',this)" id="sourcesNavBtn">Sources</button>
         <button class="nav-btn" onclick="nav('tglib',this)" id="tglibNavBtn">TG Library</button>
         <button class="nav-btn" onclick="nav('stats',this)" id="statsNavBtn">Stats</button>
+  <button class="nav-btn" onclick="nav('features',this)" id="featuresNavBtn">AI Features<span class="nav-badge">NEW</span></button>
   <button class="nav-btn" onclick="nav('lab',this)" id="labNavBtn">Feature Lab</button>
 
   <div class="nav-grp">PLATFORMS</div>
@@ -794,7 +795,63 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 
+
+<!-- AI FEATURES SECTION -->
+<div class="sec" id="sec-features">
+  <div class="sec-head">🤖 AI & Custom Features</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
+    
+    <!-- Artist Stalker -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;">
+      <h3 style="margin:0 0 10px;font-size:14px;color:var(--accent);">🕵️ Artist Stalker</h3>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Monitor artists and automatically download their new posts.</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <select id="stalkerSource" class="input" style="flex:1;">
+          <option value="rule34">Rule34</option>
+          <option value="gelbooru">Gelbooru</option>
+          <option value="danbooru">Danbooru</option>
+          <option value="deviantart">DeviantArt</option>
+        </select>
+        <input type="text" id="stalkerArtist" class="input" placeholder="Artist" style="flex:2;">
+        <button class="btn" onclick="addStalker()">Add</button>
+      </div>
+      <div id="stalkerList" style="display:flex;flex-direction:column;gap:6px;max-height:150px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- Deduplication -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;">
+      <h3 style="margin:0 0 10px;font-size:14px;color:var(--accent);">👯 AI Deduplication</h3>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Automatically detects and merges visually identical images using Perceptual Hashing.</div>
+      <button class="btn w100" onclick="scanDuplicates()">Scan Library for Duplicates</button>
+      <div id="dupResult" style="margin-top:12px;font-size:11px;color:var(--text2);font-family:monospace;white-space:pre-wrap;"></div>
+    </div>
+
+    <!-- Telegram Reverse Search -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;">
+      <h3 style="margin:0 0 10px;font-size:14px;color:var(--accent);">🔍 TG Reverse-Search</h3>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Upload an image to find it in your local library and Telegram channel via hashing.</div>
+      <input type="file" id="reverseSearchFile" accept="image/*" style="width:100%;margin-bottom:8px;font-size:11px;">
+      <button class="btn w100" onclick="reverseSearch()">Search via Perceptual Hash</button>
+      <div id="reverseSearchResult" style="margin-top:12px;font-size:11px;color:var(--text2);"></div>
+    </div>
+
+    <!-- Browser Extension -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;">
+      <h3 style="margin:0 0 10px;font-size:14px;color:var(--accent);">🧩 Browser Extension</h3>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Install the Chrome extension to download from any site.</div>
+      <ol style="font-size:11px;color:var(--text2);margin:0;padding-left:16px;">
+        <li style="margin-bottom:4px;">Go to <code>chrome://extensions/</code></li>
+        <li style="margin-bottom:4px;">Enable <strong>Developer mode</strong></li>
+        <li style="margin-bottom:4px;">Click <strong>Load unpacked</strong> and select <code>browser_extension</code></li>
+        <li>Right click any image to send it here!</li>
+      </ol>
+    </div>
+
+  </div>
+</div>
+
 <!-- FEATURE LAB SECTION -->
+
 <div class="sec" id="sec-lab">
   <div class="sec-head">Feature Lab</div>
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">
@@ -1453,7 +1510,110 @@ function waitForDl(dl_id) {
 }
 
 // ── FILES ─────────────────────────────────────────────────────
+
+// ── AI FEATURES SCRIPTS ──
+function loadStalker() {
+  fetch('/api/stalker').then(r=>r.json()).then(data=>{
+    const c = document.getElementById('stalkerList');
+    c.innerHTML = '';
+    if(data.artists && data.artists.length > 0) {
+      data.artists.forEach(a => {
+        c.innerHTML += `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;">
+            <div style="font-family:monospace;font-size:11px;">
+              <span style="color:var(--accent);">${a.source.toUpperCase()}</span> 
+              <span style="color:var(--text);">${a.artist}</span>
+            </div>
+            <button class="btn" style="padding:2px 6px;font-size:9px;background:var(--surface);color:var(--text2);" onclick="removeStalker('${a.source}', '${a.artist}')">Remove</button>
+          </div>
+        `;
+      });
+    } else {
+      c.innerHTML = '<div style="color:var(--text3);font-size:11px;">No artists monitored.</div>';
+    }
+  });
+}
+
+function addStalker() {
+  const source = document.getElementById('stalkerSource').value;
+  const artist = document.getElementById('stalkerArtist').value;
+  if(!artist) return;
+  fetch('/api/stalker/add', {
+    method: 'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({source, artist})
+  }).then(()=> {
+    document.getElementById('stalkerArtist').value = '';
+    loadStalker();
+  });
+}
+
+function removeStalker(source, artist) {
+  fetch('/api/stalker/remove', {
+    method: 'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({source, artist})
+  }).then(()=> loadStalker());
+}
+
+function scanDuplicates() {
+  document.getElementById('dupResult').innerText = "Scanning library for duplicates... Check server logs.";
+  fetch('/api/deduplication/scan', {method: 'POST'})
+    .then(r=>r.json())
+    .then(d => {
+      setTimeout(() => {
+        fetch('/api/deduplication/duplicates').then(r=>r.json()).then(data => {
+          let html = "<span style='color:var(--accent);'>Duplicates found:</span>\n";
+          if(data.duplicates.length === 0) html += "None!";
+          data.duplicates.forEach(grp => {
+             html += `• ${grp.join('\n  === \n  ')}\n`;
+          });
+          document.getElementById('dupResult').innerHTML = html;
+        });
+      }, 3000);
+    });
+}
+
+function reverseSearch() {
+  const fileInput = document.getElementById('reverseSearchFile');
+  if(!fileInput.files.length) return;
+  
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+  
+  document.getElementById('reverseSearchResult').innerText = "Computing perceptual hash and searching...";
+  fetch('/api/telegram/reverse-search', {
+    method: 'POST',
+    body: formData
+  }).then(r=>r.json()).then(data=>{
+    if(data.matches && data.matches.length > 0) {
+      let html = "<strong style='color:var(--accent);'>Found Matches:</strong><br><br>";
+      data.matches.forEach(m => {
+        html += `Local File: <code style="color:var(--text);">${m.filename}</code><br>`;
+        if(m.tg_info) {
+          html += `<span style="color:var(--accent);">Telegram DB Match:</span> Sent on ${new Date(m.tg_info.timestamp*1000).toLocaleString()}<br>`;
+        } else {
+          html += `<span style="color:var(--text3);">No corresponding Telegram DB entry found.</span><br>`;
+        }
+        html += `<br>`;
+      });
+      document.getElementById('reverseSearchResult').innerHTML = html;
+    } else {
+      document.getElementById('reverseSearchResult').innerHTML = "<span style='color:var(--text3);'>No matches found in library.</span>";
+    }
+  }).catch(e => {
+    document.getElementById('reverseSearchResult').innerHTML = "<span style='color:#ff3e6c;'>Error connecting to reverse-search engine.</span>";
+  });
+}
+
+function upscaleFile(filename) {
+  fetch(`/api/upscale/${filename}`, {method: 'POST'})
+    .then(r=>r.json())
+    .then(data => {
+      alert(`Started AI Upscaling for ${filename}. Output will appear here soon.`);
+    });
+}
+
 async function loadFiles() {
+
   const res = await fetch('/api/files');
   const files = await res.json();
   const list = document.getElementById('filesList');
@@ -1897,6 +2057,7 @@ function nav(id, btn) {
   if(id==='history') loadHistory();
   if(id==='sources') { loadSources(); loadTgChannels(); loadCookies(); }
   if(id==='tglib') tgLibLoad();
+  if(id==='features') { loadStalker(); }
   if(id==='stats') { loadStats(); if(statsInterval) clearInterval(statsInterval); statsInterval = setInterval(loadStats, 10000); }
   if(id==='lab') loadFeatureLab();
   if(id!=='stats' && statsInterval) { clearInterval(statsInterval); statsInterval = null; }
