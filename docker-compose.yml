@@ -1,6 +1,18 @@
 version: '3.8'
 
 services:
+  app:
+    build: .
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./downloads:/app/downloads
+    environment:
+      - DOCKER_ENV=1
+      # Set your Telegram config here if you want to use it
+      # - TELEGRAM_BOT_TOKEN=...
+      # - TELEGRAM_CHAT_ID=...
+
   redis:
     image: redis:latest
     ports:

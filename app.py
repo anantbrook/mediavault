@@ -92,6 +92,9 @@ except ImportError:
     _health = None
     HEALTH_AVAILABLE = False
 _is_cloud = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("DYNO"))
+_is_docker = bool(os.environ.get("DOCKER_ENV"))
+
+# Use tempdir for Railway/Heroku. For Docker, use local volume mount mapped to BASE_DIR/downloads.
 DOWNLOAD_DIR = Path(tempfile.gettempdir()) / "mediavault_downloads" if _is_cloud else BASE_DIR / "downloads"
 DOWNLOAD_DIR.mkdir(exist_ok=True)
 active_downloads = {}
@@ -3059,17 +3062,20 @@ def unblock_clear_sessions():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
     # Local: bind to 127.0.0.1 to avoid Windows Firewall popups
-    # Cloud: bind to 0.0.0.0
-    host = "0.0.0.0" if _is_cloud else "127.0.0.1"
+    # Cloud/Docker: bind to 0.0.0.0
+    host = "0.0.0.0" if (_is_cloud or _is_docker) else "127.0.0.1"
     print(f"\n{'='*52}")
     print(f"  MEDIA VAULT  —  http://localhost:{port}")
     print(f"  Downloads: {DOWNLOAD_DIR.resolve()}")
     print(f"{'='*52}\n")
-    # Open browser 2 seconds after server starts
-    threading.Thread(
-        target=lambda: (time.sleep(2), webbrowser.open(f"http://localhost:{port}")),
-        daemon=True
-    ).start()
+
+    # Open browser 2 seconds after server starts (only if not running headless in Docker)
+    if not _is_docker and not _is_cloud:
+        threading.Thread(
+            target=lambda: (time.sleep(2), webbrowser.open(f"http://localhost:{port}")),
+            daemon=True
+        ).start()
+
     try:
         app.run(host=host, port=port, debug=False, use_reloader=False)
     except Exception as e:
