@@ -15,12 +15,21 @@ fi
 
 echo "[OK] Python found: $(python3 --version)"
 echo ""
+
+if [ ! -d "venv" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv venv
+fi
+
+echo "Activating virtual environment..."
+source venv/bin/activate
+
 echo "Installing/checking dependencies..."
-pip3 install -r requirements.txt --quiet --upgrade
+pip install -r requirements.txt --quiet --upgrade
 echo "[OK] Dependencies ready"
 echo ""
 echo "[OK] Starting server at http://localhost:5050"
-echo "[OK] Browser will open automatically"
+echo "[OK] Browser will open automatically (if not in Docker)"
 echo ""
 echo "Downloads saved to: $(pwd)/downloads/"
 echo ""
@@ -28,4 +37,4 @@ echo "Press Ctrl+C to stop"
 echo "══════════════════════════════════════════════"
 echo ""
 
-python3 app.py
+python app.py
