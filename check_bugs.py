@@ -67,16 +67,16 @@ def check_python_syntax(path: Path) -> list[dict]:
 #  CHECK COMMON PYTHON BUGS
 # ─────────────────────────────────────────────────────────────────────────────
 COMMON_PATTERNS = [
-    (r"except\s*:", "Bare except clause — catches ALL exceptions including KeyboardInterrupt"),
-    (r"print\s*\(", None),  # OK — just count them
-    (r"TODO|FIXME|HACK|XXX", "Unresolved TODO/FIXME in code"),
-    (r"import \*", "Wildcard import — can cause name collisions"),
-    (r"eval\s*\(", "eval() is dangerous — review this"),
-    (r"exec\s*\(", "exec() is dangerous — review this"),
-    (r"os\.system\s*\(", "os.system() — prefer subprocess"),
-    (r"password\s*=\s*['\"][^'\"]+['\"]", "Hardcoded password detected!"),
-    (r"api_key\s*=\s*['\"][^'\"]+['\"]", "Hardcoded API key detected!"),
-    (r"secret\s*=\s*['\"][^'\"]+['\"]", "Hardcoded secret detected!"),
+    (re.compile(r"except\s*:", re.IGNORECASE), "Bare except clause — catches ALL exceptions including KeyboardInterrupt"),
+    (re.compile(r"print\s*\(", re.IGNORECASE), None),  # OK — just count them
+    (re.compile(r"TODO|FIXME|HACK|XXX", re.IGNORECASE), "Unresolved TODO/FIXME in code"),
+    (re.compile(r"import \*", re.IGNORECASE), "Wildcard import — can cause name collisions"),
+    (re.compile(r"eval\s*\(", re.IGNORECASE), "eval() is dangerous — review this"),
+    (re.compile(r"exec\s*\(", re.IGNORECASE), "exec() is dangerous — review this"),
+    (re.compile(r"os\.system\s*\(", re.IGNORECASE), "os.system() — prefer subprocess"),
+    (re.compile(r"password\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "Hardcoded password detected!"),
+    (re.compile(r"api_key\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "Hardcoded API key detected!"),
+    (re.compile(r"secret\s*=\s*['\"][^'\"]+['\"]", re.IGNORECASE), "Hardcoded secret detected!"),
 ]
 
 def check_code_smells(path: Path) -> list[dict]:
@@ -87,8 +87,8 @@ def check_code_smells(path: Path) -> list[dict]:
             stripped = line.strip()
             if stripped.startswith("#"):
                 continue
-            for pattern, message in COMMON_PATTERNS:
-                if message and re.search(pattern, line, re.IGNORECASE):
+            for pattern_re, message in COMMON_PATTERNS:
+                if message and pattern_re.search(line):
                     issues.append({
                         "file":    str(path.relative_to(ROOT)),
                         "line":    i,
