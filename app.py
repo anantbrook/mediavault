@@ -1,4 +1,4 @@
-import os, sys, json, threading, webbrowser, time, re, uuid, random, ast, html as html_lib
+import os, sys, json, threading, webbrowser, time, re, uuid, random, ast, subprocess, html as html_lib
 from pathlib import Path
 from urllib.parse import urlparse, quote
 from flask import Flask, render_template, request, jsonify, send_file, Response, stream_with_context, make_response
@@ -2173,9 +2173,12 @@ def open_folder():
     if _is_cloud:
         return jsonify({"ok": False, "msg": "Cannot open folder on cloud server"})
     folder = str(DOWNLOAD_DIR.resolve())
-    if sys.platform=="win32": os.startfile(folder)
-    elif sys.platform=="darwin": os.system(f'open "{folder}"')
-    else: os.system(f'xdg-open "{folder}"')
+    if sys.platform=="win32":
+        os.startfile(folder)
+    elif sys.platform=="darwin":
+        subprocess.run(["open", folder], check=False)
+    else:
+        subprocess.run(["xdg-open", folder], check=False)
     return jsonify({"ok":True})
 
 
