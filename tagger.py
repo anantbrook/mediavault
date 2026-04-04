@@ -1,5 +1,3 @@
-import os
-import torch
 from PIL import Image
 
 try:
