@@ -12,6 +12,7 @@ It tries 6 methods in order until one works.
 import sys, re, json, os, time, requests, ast, html as html_lib
 from pathlib import Path
 from urllib.parse import quote
+from concurrent.futures import ThreadPoolExecutor, as_completed
 try:
     from curl_cffi import requests as cffi_requests
 except ImportError:
@@ -41,7 +42,8 @@ def method1_eclipse_api(dev_id):
         f"https://www.deviantart.com/_napi/da-browse/api/networkbar/deviation/{dev_id}",
         f"https://www.deviantart.com/_napi/shared_api/deviation/fetch?deviationid={dev_id}",
     ]
-    for ep in endpoints:
+
+    def fetch(ep):
         try:
             r = requests.get(ep, headers=HEADERS, timeout=15)
             if r.status_code == 200:
@@ -49,7 +51,6 @@ def method1_eclipse_api(dev_id):
                 # Find wixmp video URLs
                 matches = re.findall(r'https://[^"\'\\s]+wixmp[^"\'\\s]+\.mp4[^"\'\\s]*', text)
                 if matches:
-                    log(f"  Found via Eclipse API: {matches[0][:80]}")
                     return max(matches, key=len)  # longest = highest quality
                 # Find any wixmp URL
                 wix = re.findall(r'https://[^"\'\\s]+wixmp\.com[^"\'\\s]+', text)
@@ -57,6 +58,19 @@ def method1_eclipse_api(dev_id):
                     return max(wix, key=len)
         except Exception as e:
             log(f"  Endpoint failed: {e}")
+        return None
+
+    executor = ThreadPoolExecutor(max_workers=len(endpoints))
+    try:
+        futures = [executor.submit(fetch, ep) for ep in endpoints]
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                log(f"  Found via Eclipse API: {result[:80]}")
+                executor.shutdown(wait=False)
+                return result
+    finally:
+        executor.shutdown(wait=False)
     return None
 
 def method2_oembed(url):
@@ -324,8 +338,3 @@ if __name__ == "__main__":
         print("\n❌ Could not find video URL. Try:")
         print("   pip install yt-dlp")
         print(f"   yt-dlp --cookies-from-browser chrome \"{url}\"")
-
-
-
-
-
