@@ -31,7 +31,7 @@ Usage:
 """
 
 from __future__ import annotations
-import os, re, json, time, random, threading, uuid
+import os, re, json, time, random, threading
 from pathlib import Path
 from urllib.parse import urlparse, quote, urljoin, parse_qs
 from typing import Optional, Callable
